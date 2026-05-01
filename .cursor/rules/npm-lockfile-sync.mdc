@@ -1,0 +1,32 @@
+---
+description: Keep package.json and package-lock.json in sync for deploys (npm ci)
+globs: "**/package.json"
+alwaysApply: false
+---
+
+# npm lockfile and deployment
+
+The installable app lives in **`frontend/`**. All `npm` commands that affect the lockfile must run from **`frontend`** (that folder contains `package.json` and `package-lock.json`).
+
+## When you change dependencies
+
+1. Edit **`frontend/package.json`** (or use `npm install <pkg>` / `npm uninstall <pkg>` from `frontend`).
+2. Run **`npm install`** in **`frontend`** so **`frontend/package-lock.json`** updates.
+3. Commit **`frontend/package.json`** and **`frontend/package-lock.json`** in the **same** commit.
+
+Never edit `package-lock.json` by hand.
+
+## Verify before push
+
+From `frontend`:
+
+```bash
+npm ci
+npm run build
+```
+
+If `npm ci` fails with a lockfile error, the lockfile is out of date—run `npm install` in `frontend` again and commit the updated lockfile.
+
+## Deploy configuration
+
+Point the host’s **root directory** (or “project folder”) to **`frontend`** if the platform defaults to the repo root—otherwise it will not find the right `package.json` / lockfile pair.
