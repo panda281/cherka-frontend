@@ -1,7 +1,27 @@
 import type { ReceiptSubmitResponse } from "../types";
 
+export const RECEIPT_TELEGRAM_REDIRECT_SECONDS = 10;
+
 export function telegramFallbackMessage(orderRef: string): string {
   return `No Telegram deep link from the server. Set up the ticket bot username on the server, or use your user bot with /claim ${orderRef}.`;
+}
+
+/** e.g. https://t.me/ticketr_user_demo_bot + ?start=ORD-… */
+export function buildTelegramStartUrl(userBotBase: string, orderRef: string): string {
+  const base = userBotBase.trim().replace(/\/$/, "");
+  if (!base.includes("?")) return `${base}?start=${encodeURIComponent(orderRef)}`;
+  return `${base}&start=${encodeURIComponent(orderRef)}`;
+}
+
+/** Prefer API deep link; otherwise env user bot + ?start=orderRef (same shape as server would return). */
+export function resolveReceiptRedirectUrl(
+  apiTelegramOpenBotUrl: string | null | undefined,
+  orderRef: string,
+  userBotBaseUrl: string
+): string {
+  const fromApi = apiTelegramOpenBotUrl?.trim();
+  if (fromApi) return fromApi;
+  return buildTelegramStartUrl(userBotBaseUrl, orderRef);
 }
 
 /** Parse JSON body from POST /orders/:id/receipt (after response.ok). */

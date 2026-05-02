@@ -785,6 +785,186 @@
   line-height: 1.5;
 }
 
+.pzm-order__waitWrap {
+  margin: 14px 0 0;
+}
+
+/* Telegram redirect wait — progress, tips, motion */
+.pzm-wait {
+  position: relative;
+  overflow: hidden;
+  padding: 20px 18px 22px;
+  border-radius: 14px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: linear-gradient(145deg, #f8fafc 0%, #eef2ff 45%, #f5f3ff 100%);
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.12);
+  text-align: center;
+}
+
+.pzm-wait__glow {
+  position: absolute;
+  inset: -40% -20%;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(129, 140, 248, 0.35) 0%,
+    transparent 55%
+  );
+  animation: pzm-wait-glow 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pzm-wait-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(6px);
+  }
+}
+
+.pzm-wait__progressTrack {
+  position: relative;
+  z-index: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.65);
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.pzm-wait__progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #818cf8, #a78bfa);
+  transition: width 0.95s linear;
+}
+
+.pzm-wait__eyebrow {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+.pzm-wait__countdown {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pzm-wait__countNum {
+  display: inline-block;
+  font-size: clamp(2.5rem, 8vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--pzm-text);
+  animation: pzm-wait-tick 0.5s ease;
+}
+
+@keyframes pzm-wait-tick {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.pzm-wait__countSuffix {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--pzm-muted);
+}
+
+.pzm-wait__tip {
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+  max-width: 26ch;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #374151;
+  animation: pzm-wait-tip-in 0.5s ease;
+}
+
+@keyframes pzm-wait-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pzm-wait__dots {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.pzm-wait__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #818cf8);
+  animation: pzm-wait-bounce 1.2s ease-in-out infinite;
+}
+
+.pzm-wait__dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.pzm-wait__dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes pzm-wait-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-8px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pzm-wait__glow,
+  .pzm-wait__countNum,
+  .pzm-wait__tip,
+  .pzm-wait__dot {
+    animation: none !important;
+  }
+
+  .pzm-wait__progressFill {
+    transition: none;
+  }
+}
+
 /* Toast / message */
 .pzm-toast {
   max-width: 1200px;

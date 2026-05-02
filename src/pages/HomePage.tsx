@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { ReceiptTelegramWaitPanel } from "../components/ReceiptTelegramWaitPanel";
+import { useTelegramReceiptRedirect } from "../hooks/useTelegramReceiptRedirect";
 import { Link } from "react-router-dom";
 import { EventCard } from "../components/EventCard";
 import { requestEvents } from "../lib/api";
@@ -17,6 +19,8 @@ import {
   fetchTelegramDeepLink,
   openTelegramBotUrl,
   readReceiptSubmitBody,
+  RECEIPT_TELEGRAM_REDIRECT_SECONDS,
+  resolveReceiptRedirectUrl,
   telegramFallbackMessage
 } from "../lib/telegramBot";
 import type { EventItem, OrderResponse } from "../types";
@@ -36,7 +40,8 @@ function homeToastTone(text: string): "success" | "error" | "warn" {
   if (
     text.includes("Open Telegram") ||
     text.includes("Tap Start") ||
-    text.includes("continue with your ticket")
+    text.includes("continue with your ticket") ||
+    text.includes("Redirecting to Telegram")
   ) {
     return "success";
   }
@@ -59,6 +64,11 @@ export function HomePage() {
   const [submittingReceipt, setSubmittingReceipt] = useState(false);
   const [recoveringTelegram, setRecoveringTelegram] = useState(false);
   const [message, setMessage] = useState("");
+  const {
+    secondsLeft: telegramRedirectSeconds,
+    scheduleRedirect,
+    cancelRedirect
+  } = useTelegramReceiptRedirect();
 
   const visible = useMemo(() => publishedEvents(events), [events]);
 
@@ -121,6 +131,7 @@ export function HomePage() {
     }
     setBuying(true);
     setMessage("");
+    cancelRedirect();
     setOrderResponse(null);
     try {
       const response = await fetch(`${apiBaseUrl}/orders`, {
@@ -153,6 +164,7 @@ export function HomePage() {
     }
     setSubmittingReceipt(true);
     setMessage("");
+    cancelRedirect();
     const orderRef = orderResponse.order.orderRef;
     try {
       const formData = new FormData();
@@ -168,28 +180,29 @@ export function HomePage() {
       const tgUrl = receiptData.telegramOpenBotUrl;
       const nextHint = receiptData.telegramNextStepHint?.trim();
 
+      const resolvedUrl = resolveReceiptRedirectUrl(
+        typeof tgUrl === "string" && tgUrl.length > 0 ? tgUrl : null,
+        orderRef,
+        userBotLink
+      );
+
       setOrderResponse((prev) =>
         prev
           ? {
               ...prev,
-              telegramOpenBotUrl:
-                typeof tgUrl === "string" && tgUrl.length > 0 ? tgUrl : prev.telegramOpenBotUrl,
+              telegramOpenBotUrl: resolvedUrl,
               telegramNextStepHint:
                 nextHint && nextHint.length > 0 ? nextHint : prev.telegramNextStepHint
             }
           : prev
       );
 
-      if (typeof tgUrl === "string" && tgUrl.length > 0) {
-        openTelegramBotUrl(tgUrl);
-        setMessage(
-          nextHint && nextHint.length > 0
-            ? nextHint
-            : "Open Telegram, then tap Start to continue with your ticket."
-        );
-      } else {
-        setMessage(telegramFallbackMessage(orderRef));
-      }
+      scheduleRedirect(resolvedUrl, RECEIPT_TELEGRAM_REDIRECT_SECONDS);
+      setMessage(
+        nextHint && nextHint.length > 0
+          ? `${nextHint} Redirecting to Telegram in ${RECEIPT_TELEGRAM_REDIRECT_SECONDS} seconds.`
+          : `Receipt submitted. Redirecting to Telegram in ${RECEIPT_TELEGRAM_REDIRECT_SECONDS} seconds.`
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unexpected error.");
     } finally {
@@ -357,6 +370,7 @@ export function HomePage() {
                 onChange={(event) => {
                   setSelectedEventId(event.target.value);
                   setSelectedTierId("");
+                  cancelRedirect();
                   setOrderResponse(null);
                 }}
               >
@@ -439,17 +453,29 @@ export function HomePage() {
                   type="button"
                   className="pzm-btn pzm-btn--outline"
                   onClick={submitReceiptFromLanding}
-                  disabled={submittingReceipt}
+                  disabled={
+                    submittingReceipt ||
+                    (telegramRedirectSeconds !== null && telegramRedirectSeconds > 0)
+                  }
                 >
                   {submittingReceipt ? "Submitting…" : "Submit receipt"}
                 </button>
               </div>
+              {telegramRedirectSeconds !== null && telegramRedirectSeconds > 0 ? (
+                <div className="pzm-order__waitWrap">
+                  <ReceiptTelegramWaitPanel secondsLeft={telegramRedirectSeconds} />
+                </div>
+              ) : null}
               <div className="pzm-order__telegramFoot">
                 <button
                   type="button"
                   className="pzm-btn pzm-btn--outline pzm-btn--block"
                   onClick={recoverTelegramLinkLanding}
-                  disabled={recoveringTelegram || submittingReceipt}
+                  disabled={
+                    recoveringTelegram ||
+                    submittingReceipt ||
+                    (telegramRedirectSeconds !== null && telegramRedirectSeconds > 0)
+                  }
                 >
                   {recoveringTelegram ? "Loading…" : "Get Telegram link again"}
                 </button>
