@@ -10,6 +10,12 @@ import {
   minPriceEtb,
   publishedEvents
 } from "../lib/eventUtils";
+import {
+  fetchTelegramDeepLink,
+  openTelegramBotUrl,
+  readReceiptSubmitBody,
+  telegramFallbackMessage
+} from "../lib/telegramBot";
 import type { EventItem, OrderResponse } from "../types";
 
 function DetailIconCalendar({ className }: { className?: string }) {
@@ -85,10 +91,20 @@ function resolvePaymentPhone(order: OrderResponse | null): string {
   return defaultPaymentPhone;
 }
 
-function feedbackTone(text: string): "success" | "error" {
+function feedbackTone(text: string): "success" | "error" | "warn" {
+  if (text.startsWith("Order created")) return "success";
+  if (text === "Opening Telegram again…") return "success";
   if (
-    text.startsWith("Order created") ||
-    text.startsWith("Receipt submitted")
+    text.includes("Set up the ticket bot") ||
+    text.includes("No Telegram deep link") ||
+    text.includes("/claim ")
+  ) {
+    return "warn";
+  }
+  if (
+    text.includes("Open Telegram") ||
+    text.includes("Tap Start") ||
+    text.includes("continue with your ticket")
   ) {
     return "success";
   }
@@ -107,6 +123,7 @@ export function EventDetailPage() {
   const [submittingReceipt, setSubmittingReceipt] = useState(false);
   const [message, setMessage] = useState("");
   const [phoneCopied, setPhoneCopied] = useState(false);
+  const [recoveringTelegram, setRecoveringTelegram] = useState(false);
   const feedbackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -194,6 +211,7 @@ export function EventDetailPage() {
     }
     setSubmittingReceipt(true);
     setMessage("");
+    const orderRef = orderResponse.order.orderRef;
     try {
       const formData = new FormData();
       formData.append("receiptNo", receiptNo.trim());
@@ -202,11 +220,58 @@ export function EventDetailPage() {
         body: formData
       });
       if (!response.ok) throw new Error("Failed to submit receipt.");
-      setMessage("Receipt submitted. Open User Bot: /status then /claim with your order ref.");
+
+      const receiptData = await readReceiptSubmitBody(response);
+
+      const tgUrl = receiptData.telegramOpenBotUrl;
+      const nextHint = receiptData.telegramNextStepHint?.trim();
+
+      setOrderResponse((prev) =>
+        prev
+          ? {
+              ...prev,
+              telegramOpenBotUrl:
+                typeof tgUrl === "string" && tgUrl.length > 0 ? tgUrl : prev.telegramOpenBotUrl,
+              telegramNextStepHint:
+                nextHint && nextHint.length > 0 ? nextHint : prev.telegramNextStepHint
+            }
+          : prev
+      );
+
+      if (typeof tgUrl === "string" && tgUrl.length > 0) {
+        openTelegramBotUrl(tgUrl);
+        setMessage(
+          nextHint && nextHint.length > 0
+            ? nextHint
+            : "Open Telegram, then tap Start to continue with your ticket."
+        );
+      } else {
+        setMessage(telegramFallbackMessage(orderRef));
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unexpected error.");
     } finally {
       setSubmittingReceipt(false);
+    }
+  }
+
+  async function recoverTelegramLink() {
+    if (!orderResponse?.order.id) return;
+    setRecoveringTelegram(true);
+    setMessage("");
+    try {
+      const url = await fetchTelegramDeepLink(apiBaseUrl, orderResponse.order.id);
+      if (url) {
+        setOrderResponse((prev) => (prev ? { ...prev, telegramOpenBotUrl: url } : prev));
+        openTelegramBotUrl(url);
+        setMessage("Opening Telegram again…");
+      } else {
+        setMessage(telegramFallbackMessage(orderResponse.order.orderRef));
+      }
+    } catch {
+      setMessage(telegramFallbackMessage(orderResponse.order.orderRef));
+    } finally {
+      setRecoveringTelegram(false);
     }
   }
 
@@ -422,6 +487,25 @@ export function EventDetailPage() {
                     to {orderResponse.paymentInstruction.receiverName}
                   </span>
                 </p>
+                {typeof orderResponse.telegramOpenBotUrl === "string" &&
+                orderResponse.telegramOpenBotUrl.length > 0 ? (
+                  <div className="pzm-order__earlyTg">
+                    <button
+                      type="button"
+                      className="pzm-btn pzm-btn--outline pzm-btn--block"
+                      onClick={() => openTelegramBotUrl(orderResponse.telegramOpenBotUrl!)}
+                    >
+                      Get ticket in Telegram
+                    </button>
+                    {orderResponse.telegramNextStepHint ? (
+                      <p className="pzm-order__tgHint">{orderResponse.telegramNextStepHint}</p>
+                    ) : (
+                      <p className="pzm-order__tgHint pzm-order__tgHint--muted">
+                        Opens Telegram with your order reference.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
                 <div className="pzm-order__receipt">
                   <label className="pzm-field pzm-field--tight">
                     <span>Receipt number</span>
@@ -441,11 +525,39 @@ export function EventDetailPage() {
                     {submittingReceipt ? "…" : "Submit receipt"}
                   </button>
                 </div>
-                <p className="pzm-order__hint">
-                  <a href={userBotLink} target="_blank" rel="noreferrer">
-                    Open User Bot →
-                  </a>
-                </p>
+                <div className="pzm-order__telegramFoot">
+                  <button
+                    type="button"
+                    className="pzm-btn pzm-btn--outline pzm-btn--block"
+                    onClick={recoverTelegramLink}
+                    disabled={recoveringTelegram || submittingReceipt}
+                  >
+                    {recoveringTelegram ? "Loading…" : "Get Telegram link again"}
+                  </button>
+                  <p className="pzm-order__footNote">
+                    Fetches the link from the server if you closed the app or need another try.
+                  </p>
+                  {typeof orderResponse.telegramOpenBotUrl === "string" &&
+                  orderResponse.telegramOpenBotUrl.length > 0 ? (
+                    <p className="pzm-order__hint">
+                      <a
+                        href={orderResponse.telegramOpenBotUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open in Telegram (same link)
+                      </a>
+                    </p>
+                  ) : (
+                    <p className="pzm-order__hint pzm-order__hint--fallback">
+                      No deep link yet — after the server is configured, use{" "}
+                      <a href={userBotLink} target="_blank" rel="noreferrer">
+                        User Bot
+                      </a>{" "}
+                      with <code className="pzm-order__inlineRef">/claim {orderResponse.order.orderRef}</code>
+                    </p>
+                  )}
+                </div>
               </div>
             ) : null}
           </div>

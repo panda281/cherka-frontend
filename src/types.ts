@@ -27,6 +27,15 @@ export type OrderResponse = {
     exactAmount: string;
     note: string;
   };
+  /** From POST /orders — optional early deep link with ?start=orderRef */
+  telegramOpenBotUrl?: string | null;
+  telegramNextStepHint?: string | null;
+};
+
+/** Body from POST /orders/:orderId/receipt (201) */
+export type ReceiptSubmitResponse = {
+  telegramOpenBotUrl?: string | null;
+  telegramNextStepHint?: string | null;
 };
 
 export const CATEGORIES = [
