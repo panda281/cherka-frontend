@@ -1,3 +1,4 @@
+# Multi-stage: Vite build → nginx static (verify remote: panda281/cherka-frontend)
 FROM node:20-alpine AS builder
 
 WORKDIR /app
