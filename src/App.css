@@ -1410,7 +1410,7 @@
 }
 
 .pzm-ticketCard__tiers {
-  padding: 0 22px 22px;
+  padding: 0 22px 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1524,13 +1524,104 @@
 }
 
 .pzm-ticketCard__selectionHint {
-  margin: -4px 0 0;
+  margin: 0;
   font-size: 0.88rem;
   color: var(--pzm-text);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.pzm-ticketCard__footer {
+  padding: 18px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.pzm-ticketCard__qty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Quantity row: one surface like tier options */
+.pzm-qtyStrip {
+  display: flex;
+  align-items: stretch;
+  min-height: 52px;
+  border-radius: 12px;
+  border: 2px solid #e8e8e8;
+  background: #fff;
+  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.pzm-qtyStrip:focus-within {
+  border-color: var(--pzm-accent);
+  box-shadow: 0 0 0 3px var(--pzm-accent-ring);
+}
+
+.pzm-qtyStrip__btn {
+  flex: 0 0 48px;
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--pzm-text);
+  background: linear-gradient(180deg, #fafbff 0%, #f4f6fb 100%);
+  border: none;
+  border-right: 1px solid #e8e8e8;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pzm-qtyStrip__btn:last-of-type {
+  border-right: none;
+  border-left: 1px solid #e8e8e8;
+}
+
+.pzm-qtyStrip__btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06) 0%, rgba(129, 140, 248, 0.08) 100%);
+  color: var(--pzm-accent);
+}
+
+.pzm-qtyStrip__btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.pzm-qtyStrip__input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 8px;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--pzm-text);
+  background: #fff;
+  border: none;
+  outline: none;
+}
+
+.pzm-qtyStrip__input::-webkit-outer-spin-button,
+.pzm-qtyStrip__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pzm-qtyStrip__input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
 }
 
 .pzm-ticketCard__selectionHint--mute {

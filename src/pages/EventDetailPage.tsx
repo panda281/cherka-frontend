@@ -464,48 +464,59 @@ export function EventDetailPage() {
                     </p>
                   )}
                 </div>
-                <div className="pzm-field pzm-qty">
-                  <span>Quantity</span>
-                  <div className="pzm-qty__controls">
-                    <button
-                      type="button"
-                      className="pzm-qty__step"
-                      aria-label="Decrease quantity"
-                      disabled={quantity <= 1}
-                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+
+                <div className="pzm-ticketCard__footer">
+                  <div className="pzm-ticketCard__qty">
+                    <p className="pzm-ticketCard__tierLabel" id="qty-field-label">
+                      Quantity
+                    </p>
+                    <div
+                      className="pzm-qtyStrip"
+                      role="group"
+                      aria-labelledby="qty-field-label"
                     >
-                      −
-                    </button>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={999}
-                      value={quantity}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        setQuantity(Number.isFinite(v) && v >= 1 ? Math.min(999, v) : 1);
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="pzm-qty__step"
-                      aria-label="Increase quantity"
-                      disabled={quantity >= 999}
-                      onClick={() => setQuantity((q) => Math.min(999, q + 1))}
-                    >
-                      +
-                    </button>
+                      <button
+                        type="button"
+                        className="pzm-qtyStrip__btn"
+                        aria-label="Decrease quantity"
+                        disabled={quantity <= 1}
+                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      >
+                        −
+                      </button>
+                      <input
+                        className="pzm-qtyStrip__input"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={999}
+                        value={quantity}
+                        aria-label="Ticket quantity"
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          setQuantity(Number.isFinite(v) && v >= 1 ? Math.min(999, v) : 1);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="pzm-qtyStrip__btn"
+                        aria-label="Increase quantity"
+                        disabled={quantity >= 999}
+                        onClick={() => setQuantity((q) => Math.min(999, q + 1))}
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    className="pzm-btn pzm-btn--cta pzm-btn--block"
+                    onClick={buyTicket}
+                    disabled={buying || !selectedTierId}
+                  >
+                    {buying ? "Processing…" : "Continue to payment"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="pzm-btn pzm-btn--cta pzm-btn--block"
-                  onClick={buyTicket}
-                  disabled={buying || !selectedTierId}
-                >
-                  {buying ? "Processing…" : "Continue to payment"}
-                </button>
               </>
             ) : null}
 
