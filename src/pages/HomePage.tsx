@@ -12,6 +12,7 @@ import {
   minPriceEtb,
   publishedEvents
 } from "../lib/eventUtils";
+import { ORGANIZER_TELEGRAM_HANDLE, ORGANIZER_TELEGRAM_URL } from "../lib/organizerContact";
 import type { EventItem, OrderResponse } from "../types";
 import { CATEGORIES } from "../types";
 
@@ -216,6 +217,18 @@ export function HomePage() {
               {c}
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="pzm-organizerHint" aria-label="For event organizers">
+        <div className="pzm-organizerHint__inner">
+          <p className="pzm-organizerHint__text">
+            <strong>Hosting an event?</strong> Send a message to{" "}
+            <a href={ORGANIZER_TELEGRAM_URL} target="_blank" rel="noreferrer">
+              {ORGANIZER_TELEGRAM_HANDLE}
+            </a>{" "}
+            on Telegram to have your event listed on Ticketr.
+          </p>
         </div>
       </section>
 
