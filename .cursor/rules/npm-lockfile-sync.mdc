@@ -6,27 +6,31 @@ alwaysApply: false
 
 # npm lockfile and deployment
 
-The installable app lives in **`frontend/`**. All `npm` commands that affect the lockfile must run from **`frontend`** (that folder contains `package.json` and `package-lock.json`).
+Docker **`Dockerfile`** at the **repo root** runs **`npm ci`** on **`node:20-alpine`** (bundled **npm 10**). The lockfile must be complete for npm 10 — lockfiles produced only with **npm 11** can fail in CI with missing packages (e.g. `@emnapi/core` / `@emnapi/runtime`) even after `npm install` locally.
 
 ## When you change dependencies
 
-1. Edit **`frontend/package.json`** (or use `npm install <pkg>` / `npm uninstall <pkg>` from `frontend`).
-2. Run **`npm install`** in **`frontend`** so **`frontend/package-lock.json`** updates.
-3. Commit **`frontend/package.json`** and **`frontend/package-lock.json`** in the **same** commit.
+1. Edit **`package.json`** at the path your deploy uses (repo root for Render/Docker here; **`frontend/`** is a duplicate copy — keep both **`package-lock.json`** files identical if both exist).
+2. Run **`npm install`** there, then **`npm ci`** should succeed.
+
+If **`npm ci`** fails only on the server, regenerate the lockfile with npm 10 once:
+
+```bash
+rm -rf node_modules package-lock.json
+npx npm@10.8.2 install
+```
+
+Then **`npm run build`** and commit **`package.json`** + **`package-lock.json`** together.
 
 Never edit `package-lock.json` by hand.
 
 ## Verify before push
-
-From `frontend`:
 
 ```bash
 npm ci
 npm run build
 ```
 
-If `npm ci` fails with a lockfile error, the lockfile is out of date—run `npm install` in `frontend` again and commit the updated lockfile.
-
 ## Deploy configuration
 
-Point the host’s **root directory** (or “project folder”) to **`frontend`** if the platform defaults to the repo root—otherwise it will not find the right `package.json` / lockfile pair.
+Set the service **root directory** to match where **`Dockerfile`** and **`package-lock.json`** live (repo root for this project’s Docker build).
