@@ -488,9 +488,40 @@
 
 .pzm-buy__form {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr auto auto;
   gap: 14px;
   align-items: end;
+}
+
+.pzm-qty__controls {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.pzm-qty__controls input {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+
+.pzm-qty__step {
+  font-family: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--pzm-border);
+  background: #fff;
+  color: var(--pzm-text);
+  cursor: pointer;
+}
+
+.pzm-qty__step:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .pzm-field {

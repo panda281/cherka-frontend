@@ -21,6 +21,7 @@ export function EventDetailPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTierId, setSelectedTierId] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [buying, setBuying] = useState(false);
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
   const [receiptNo, setReceiptNo] = useState("");
@@ -36,6 +37,7 @@ export function EventDetailPage() {
         if (!cancelled) {
           setEvents(payload);
           setSelectedTierId("");
+          setQuantity(1);
           setOrderResponse(null);
         }
       } catch {
@@ -61,6 +63,7 @@ export function EventDetailPage() {
       setMessage("Select a tier to continue.");
       return;
     }
+    const qty = Number.isFinite(quantity) ? Math.max(1, Math.floor(Number(quantity))) : 1;
     setBuying(true);
     setMessage("");
     setOrderResponse(null);
@@ -68,7 +71,7 @@ export function EventDetailPage() {
       const response = await fetch(`${apiBaseUrl}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: event.id, tierId: selectedTierId })
+        body: JSON.stringify({ eventId: event.id, tierId: selectedTierId, quantity: qty })
       });
       if (!response.ok) throw new Error("Could not create order. Try again.");
       const payload = (await response.json()) as OrderResponse;
@@ -172,7 +175,13 @@ export function EventDetailPage() {
               <>
                 <label className="pzm-field">
                   <span>Ticket tier</span>
-                  <select value={selectedTierId} onChange={(e) => setSelectedTierId(e.target.value)}>
+                  <select
+                    value={selectedTierId}
+                    onChange={(e) => {
+                      setSelectedTierId(e.target.value);
+                      setQuantity(1);
+                    }}
+                  >
                     <option value="">Choose tier</option>
                     {tiers.map((tier) => (
                       <option key={tier.id} value={tier.id}>
@@ -181,6 +190,40 @@ export function EventDetailPage() {
                     ))}
                   </select>
                 </label>
+                <div className="pzm-field pzm-qty">
+                  <span>Quantity</span>
+                  <div className="pzm-qty__controls">
+                    <button
+                      type="button"
+                      className="pzm-qty__step"
+                      aria-label="Decrease quantity"
+                      disabled={quantity <= 1}
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={999}
+                      value={quantity}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        setQuantity(Number.isFinite(v) && v >= 1 ? Math.min(999, v) : 1);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="pzm-qty__step"
+                      aria-label="Increase quantity"
+                      disabled={quantity >= 999}
+                      onClick={() => setQuantity((q) => Math.min(999, q + 1))}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="pzm-btn pzm-btn--dark pzm-btn--block"
