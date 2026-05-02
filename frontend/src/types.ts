@@ -2,7 +2,11 @@ export type EventTier = {
   id: string;
   tierCode: string;
   tierName: string;
+  /** Door / regular price (after early bird window). */
   price: string;
+  /** Optional early-bird unit price while `earlyBirdEndsAt` is in the future. */
+  earlyBirdPrice?: string | null;
+  earlyBirdEndsAt?: string | null;
   active: boolean;
 };
 
@@ -26,6 +30,10 @@ export type OrderResponse = {
     receiverName: string;
     exactAmount: string;
     note: string;
+    unitPrice?: string;
+    quantity?: number;
+    subtotalEtb?: string;
+    promoDiscountEtb?: string;
   };
 };
 

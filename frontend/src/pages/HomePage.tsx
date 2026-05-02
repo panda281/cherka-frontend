@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EventCard } from "../components/EventCard";
-import { requestEvents } from "../lib/api";
+import { createOrder, requestEvents } from "../lib/api";
 import { DEFAULT_HERO_UNSPLASH } from "../lib/unsplashPlaceholders";
 import {
   formatEventDate,
@@ -9,6 +9,8 @@ import {
   eventCategory,
   eventCoverImageUrl,
   isSoldOut,
+  effectiveUnitPriceEtb,
+  formatTierPriceLabel,
   minPriceEtb,
   publishedEvents
 } from "../lib/eventUtils";
@@ -29,6 +31,7 @@ export function HomePage() {
   const [buying, setBuying] = useState(false);
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
   const [receiptNo, setReceiptNo] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const [submittingReceipt, setSubmittingReceipt] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -85,6 +88,8 @@ export function HomePage() {
 
   const selectedEvent = events.find((eventItem) => eventItem.id === selectedEventId) ?? null;
   const selectedTiers = selectedEvent?.tiers.filter((tier) => tier.active) ?? [];
+  const selectedTier = selectedTiers.find((t) => t.id === selectedTierId) ?? null;
+  const estimatedUnit = selectedTier ? effectiveUnitPriceEtb(selectedTier) : null;
 
   async function buyTicket() {
     if (!selectedEventId || !selectedTierId) {
@@ -96,15 +101,12 @@ export function HomePage() {
     setMessage("");
     setOrderResponse(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: selectedEventId, tierId: selectedTierId, quantity: qty })
+      const payload = await createOrder(apiBaseUrl, {
+        eventId: selectedEventId,
+        tierId: selectedTierId,
+        quantity: qty,
+        promoCode: promoCode.trim() || undefined
       });
-      if (!response.ok) {
-        throw new Error("Could not create order. Try again.");
-      }
-      const payload = (await response.json()) as OrderResponse;
       setOrderResponse(payload);
       setReceiptNo("");
       setMessage("Order created. Complete payment, then submit receipt below.");
@@ -274,6 +276,7 @@ export function HomePage() {
                   setSelectedTierId("");
                   setQuantity(1);
                   setOrderResponse(null);
+                  setPromoCode("");
                 }}
               >
                 <option value="">Select event</option>
@@ -292,12 +295,13 @@ export function HomePage() {
                 onChange={(event) => {
                   setSelectedTierId(event.target.value);
                   setQuantity(1);
+                  setOrderResponse(null);
                 }}
               >
                 <option value="">Select tier</option>
                 {selectedTiers.map((tier) => (
                   <option key={tier.id} value={tier.id}>
-                    {tier.tierName} ({tier.tierCode}) — ETB {tier.price}
+                    {formatTierPriceLabel(tier)}
                   </option>
                 ))}
               </select>
@@ -337,6 +341,25 @@ export function HomePage() {
                 </button>
               </div>
             </div>
+            {estimatedUnit != null && selectedTierId ? (
+              <p className="pzm-muted pzm-buy__estimate">
+                List price for 1 ticket before promo: <strong>ETB {estimatedUnit.toLocaleString()}</strong>
+                {promoCode.trim() ? " — final total may be lower after promo." : null}
+              </p>
+            ) : null}
+
+            <label className="pzm-field">
+              <span>Promo code (optional)</span>
+              <input
+                value={promoCode}
+                onChange={(event) => {
+                  setPromoCode(event.target.value);
+                  setOrderResponse(null);
+                }}
+                placeholder="e.g. SUMMER10"
+                autoComplete="off"
+              />
+            </label>
 
             <button
               type="button"
@@ -361,6 +384,19 @@ export function HomePage() {
               <p>
                 <strong>Exact amount:</strong> ETB {orderResponse.paymentInstruction.exactAmount}
               </p>
+              {orderResponse.paymentInstruction.subtotalEtb ? (
+                <p>
+                  <strong>Subtotal:</strong> ETB {orderResponse.paymentInstruction.subtotalEtb}
+                  {orderResponse.paymentInstruction.promoDiscountEtb ? (
+                    <>
+                      {" "}
+                      <span className="pzm-order__promo">
+                        (promo −ETB {orderResponse.paymentInstruction.promoDiscountEtb})
+                      </span>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
               <p>
                 <strong>Note:</strong> {orderResponse.paymentInstruction.note}
               </p>

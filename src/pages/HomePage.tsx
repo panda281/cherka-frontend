@@ -242,10 +242,14 @@ export function HomePage() {
 
   const heroSoldOut = featured ? isSoldOut(featured) : false;
   const heroMin = featured ? minPriceEtb(featured) : null;
+  const singleEventHome = visible.length === 1;
 
   return (
     <>
-      <section id="featured" className="pzm-hero">
+      <section
+        id="featured"
+        className={"pzm-hero" + (singleEventHome ? " pzm-hero--solo" : "")}
+      >
         {featured ? (
           <>
             <div className="pzm-hero__bg">
@@ -302,20 +306,22 @@ export function HomePage() {
         )}
       </section>
 
-      <section className="pzm-strip" aria-label="Categories">
-        <div className="pzm-strip__inner">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`pzm-chip ${category === c ? "pzm-chip--active" : ""}`}
-              onClick={() => setCategory(c)}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </section>
+      {!singleEventHome ? (
+        <section className="pzm-strip" aria-label="Categories">
+          <div className="pzm-strip__inner">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`pzm-chip ${category === c ? "pzm-chip--active" : ""}`}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="pzm-organizerHint" aria-label="For event organizers">
         <div className="pzm-organizerHint__inner">
@@ -329,14 +335,25 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="pzm-section">
+      <section className={"pzm-section" + (singleEventHome ? " pzm-section--solo" : "")}>
         <div className="pzm-section__head">
-          <h2 className="pzm-section__title">Don&apos;t Miss Out</h2>
-          <Link to="/#all" className="pzm-section__link">
-            View all
-          </Link>
+          <div>
+            <h2 className="pzm-section__title">
+              {singleEventHome ? "Happening now" : "Don't Miss Out"}
+            </h2>
+            {singleEventHome ? (
+              <p className="pzm-section__subtitle pzm-section__subtitle--solo">
+                Your featured event — tap the card for full details and tickets.
+              </p>
+            ) : null}
+          </div>
+          {!singleEventHome ? (
+            <Link to="/#all" className="pzm-section__link">
+              View all
+            </Link>
+          ) : null}
         </div>
-        <div className="pzm-carousel">
+        <div className={"pzm-carousel" + (singleEventHome ? " pzm-carousel--solo" : "")}>
           {loadingEvents && !carousel.length ? (
             <p className="pzm-muted">Loading events…</p>
           ) : carousel.length === 0 ? (
@@ -357,7 +374,7 @@ export function HomePage() {
         {filtered.length === 0 ? (
           <p className="pzm-muted">No events in this category.</p>
         ) : (
-          <div className="pzm-grid">
+          <div className={"pzm-grid" + (singleEventHome ? " pzm-grid--solo" : "")}>
             {filtered.map((e) => (
               <EventCard key={e.id} event={e} />
             ))}

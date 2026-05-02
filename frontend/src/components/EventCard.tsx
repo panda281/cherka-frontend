@@ -1,6 +1,13 @@
 import { Link } from "react-router-dom";
 import type { EventItem } from "../types";
-import { formatEventDate, eventCategory, eventCoverImageUrl, isSoldOut, minPriceEtb } from "../lib/eventUtils";
+import {
+  eventCategory,
+  eventCoverImageUrl,
+  eventHasActiveEarlyBird,
+  formatEventDate,
+  isSoldOut,
+  minPriceEtb
+} from "../lib/eventUtils";
 
 type Props = {
   event: EventItem;
@@ -10,6 +17,7 @@ type Props = {
 export function EventCard({ event, featured }: Props) {
   const soldOut = isSoldOut(event);
   const minPrice = minPriceEtb(event);
+  const earlyBird = !soldOut && eventHasActiveEarlyBird(event);
   const category = eventCategory(event);
   const locationLabel = event.location?.trim() || "TBA";
 
@@ -19,6 +27,7 @@ export function EventCard({ event, featured }: Props) {
         <div className="pzm-card__media">
           <img src={eventCoverImageUrl(event)} alt={event.name} className="pzm-card__img" loading="lazy" />
           <span className="pzm-card__badge">{category}</span>
+          {earlyBird ? <span className="pzm-card__badge pzm-card__badge--early">Early bird</span> : null}
           {soldOut ? <span className="pzm-card__soldOut">Sold Out</span> : null}
         </div>
       </Link>
@@ -33,7 +42,10 @@ export function EventCard({ event, featured }: Props) {
         </p>
         <div className="pzm-card__row">
           {minPrice != null ? (
-            <span className="pzm-card__price">From {minPrice.toLocaleString()} ETB</span>
+            <span className="pzm-card__price">
+              From {minPrice.toLocaleString()} ETB
+              {earlyBird ? <span className="pzm-card__earlyHint"> · early pricing</span> : null}
+            </span>
           ) : (
             <span className="pzm-card__price pzm-card__price--muted">—</span>
           )}

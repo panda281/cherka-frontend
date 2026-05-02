@@ -1,4 +1,4 @@
-import type { EventItem } from "../types";
+import type { EventItem, EventTier } from "../types";
 import { unsplashCoverForEventId } from "./unsplashPlaceholders";
 
 export function inferCategory(name: string): string {
@@ -26,6 +26,53 @@ export function activeTiersOf(event: EventItem) {
   return event.tiers.filter((t) => t.active);
 }
 
+/** Matches backend: early-bird unit while end time is in the future, else `price`. */
+export function effectiveUnitPriceEtb(tier: EventTier, at: Date = new Date()): number {
+  const regular = Number.parseFloat(tier.price);
+  if (!Number.isFinite(regular)) return 0;
+  const ebRaw = tier.earlyBirdPrice != null ? Number.parseFloat(String(tier.earlyBirdPrice)) : NaN;
+  const ends = tier.earlyBirdEndsAt ? new Date(tier.earlyBirdEndsAt) : null;
+  if (
+    Number.isFinite(ebRaw) &&
+    ebRaw > 0 &&
+    ends != null &&
+    !Number.isNaN(ends.getTime()) &&
+    at.getTime() < ends.getTime()
+  ) {
+    return ebRaw;
+  }
+  return regular;
+}
+
+export function isEarlyBirdActive(tier: EventTier, at: Date = new Date()): boolean {
+  const eff = effectiveUnitPriceEtb(tier, at);
+  const reg = Number.parseFloat(tier.price);
+  return Number.isFinite(reg) && eff < reg - 1e-9;
+}
+
+/** Short label for tier dropdowns (early bird + door when applicable). */
+export function formatTierPriceLabel(tier: EventTier): string {
+  const eff = effectiveUnitPriceEtb(tier);
+  const reg = Number.parseFloat(tier.price);
+  const base = `${tier.tierName} (${tier.tierCode})`;
+  if (isEarlyBirdActive(tier)) {
+    const until = tier.earlyBirdEndsAt
+      ? new Date(tier.earlyBirdEndsAt).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit"
+        })
+      : "";
+    return `${base} — ETB ${eff.toLocaleString()} early bird${until ? ` until ${until}` : ""} · door ETB ${reg.toLocaleString()}`;
+  }
+  return `${base} — ETB ${reg.toLocaleString()}`;
+}
+
+export function eventHasActiveEarlyBird(event: EventItem): boolean {
+  return activeTiersOf(event).some((t) => isEarlyBirdActive(t));
+}
+
 export function isSoldOut(event: EventItem): boolean {
   return activeTiersOf(event).length === 0;
 }
@@ -33,7 +80,7 @@ export function isSoldOut(event: EventItem): boolean {
 export function minPriceEtb(event: EventItem): number | null {
   const tiers = activeTiersOf(event);
   if (!tiers.length) return null;
-  return Math.min(...tiers.map((t) => Number.parseFloat(t.price)));
+  return Math.min(...tiers.map((t) => effectiveUnitPriceEtb(t)));
 }
 
 export function formatEventDate(iso: string): string {

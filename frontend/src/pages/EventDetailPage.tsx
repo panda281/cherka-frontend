@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { requestEvents } from "../lib/api";
+import { createOrder, requestEvents } from "../lib/api";
 import {
   formatEventDate,
   formatEventTimeRange,
   eventCategory,
   eventCoverImageUrl,
+  effectiveUnitPriceEtb,
+  formatTierPriceLabel,
   isSoldOut,
   minPriceEtb,
   publishedEvents
@@ -25,6 +27,7 @@ export function EventDetailPage() {
   const [buying, setBuying] = useState(false);
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
   const [receiptNo, setReceiptNo] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const [submittingReceipt, setSubmittingReceipt] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -39,6 +42,7 @@ export function EventDetailPage() {
           setSelectedTierId("");
           setQuantity(1);
           setOrderResponse(null);
+          setPromoCode("");
         }
       } catch {
         if (!cancelled) setMessage("Could not load event.");
@@ -57,6 +61,8 @@ export function EventDetailPage() {
   const tiers = event?.tiers.filter((t) => t.active) ?? [];
   const soldOut = event ? isSoldOut(event) : true;
   const minPrice = event ? minPriceEtb(event) : null;
+  const selectedTier = tiers.find((t) => t.id === selectedTierId) ?? null;
+  const estimatedUnit = selectedTier ? effectiveUnitPriceEtb(selectedTier) : null;
 
   async function buyTicket() {
     if (!event?.id || !selectedTierId) {
@@ -68,13 +74,12 @@ export function EventDetailPage() {
     setMessage("");
     setOrderResponse(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: event.id, tierId: selectedTierId, quantity: qty })
+      const payload = await createOrder(apiBaseUrl, {
+        eventId: event.id,
+        tierId: selectedTierId,
+        quantity: qty,
+        promoCode: promoCode.trim() || undefined
       });
-      if (!response.ok) throw new Error("Could not create order. Try again.");
-      const payload = (await response.json()) as OrderResponse;
       setOrderResponse(payload);
       setReceiptNo("");
       setMessage("Order created. Complete payment, then submit your receipt.");
@@ -180,12 +185,13 @@ export function EventDetailPage() {
                     onChange={(e) => {
                       setSelectedTierId(e.target.value);
                       setQuantity(1);
+                      setOrderResponse(null);
                     }}
                   >
                     <option value="">Choose tier</option>
                     {tiers.map((tier) => (
                       <option key={tier.id} value={tier.id}>
-                        {tier.tierName} — ETB {tier.price}
+                        {formatTierPriceLabel(tier)}
                       </option>
                     ))}
                   </select>
@@ -224,6 +230,24 @@ export function EventDetailPage() {
                     </button>
                   </div>
                 </div>
+                {estimatedUnit != null && selectedTierId ? (
+                  <p className="pzm-muted pzm-ticketCard__estimate">
+                    1 ticket before promo: <strong>ETB {estimatedUnit.toLocaleString()}</strong>
+                    {promoCode.trim() ? " — total may be lower with promo." : null}
+                  </p>
+                ) : null}
+                <label className="pzm-field">
+                  <span>Promo code (optional)</span>
+                  <input
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value);
+                      setOrderResponse(null);
+                    }}
+                    placeholder="Promo code"
+                    autoComplete="off"
+                  />
+                </label>
                 <button
                   type="button"
                   className="pzm-btn pzm-btn--dark pzm-btn--block"
@@ -245,6 +269,14 @@ export function EventDetailPage() {
                   Pay <strong>ETB {orderResponse.paymentInstruction.exactAmount}</strong> to{" "}
                   {orderResponse.paymentInstruction.receiverName}
                 </p>
+                {orderResponse.paymentInstruction.subtotalEtb ? (
+                  <p className="pzm-order__small">
+                    Subtotal ETB {orderResponse.paymentInstruction.subtotalEtb}
+                    {orderResponse.paymentInstruction.promoDiscountEtb
+                      ? ` · promo −ETB ${orderResponse.paymentInstruction.promoDiscountEtb}`
+                      : ""}
+                  </p>
+                ) : null}
                 <div className="pzm-order__receipt">
                   <label className="pzm-field">
                     <span>Receipt #</span>

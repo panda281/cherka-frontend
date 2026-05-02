@@ -336,6 +336,29 @@
   color: var(--pzm-text);
 }
 
+.pzm-card__badge--early {
+  top: 40px;
+  background: linear-gradient(135deg, #0d6e5c, #12a08f);
+  color: #fff;
+}
+
+.pzm-card__earlyHint {
+  font-weight: 600;
+  color: var(--pzm-accent);
+}
+
+.pzm-buy__estimate,
+.pzm-ticketCard__estimate {
+  font-size: 0.85rem;
+  margin: -4px 0 0;
+  line-height: 1.35;
+}
+
+.pzm-order__promo {
+  color: #0d6e5c;
+  font-weight: 600;
+}
+
 .pzm-card__soldOut {
   position: absolute;
   top: 10px;

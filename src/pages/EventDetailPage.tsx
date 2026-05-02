@@ -116,6 +116,35 @@ function feedbackTone(text: string): "success" | "error" | "warn" {
   return "error";
 }
 
+function DetailIconHeart({ filled }: { filled: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+      />
+    </svg>
+  );
+}
+
+function DetailIconShare() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"
+      />
+    </svg>
+  );
+}
+
 export function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const apiBaseUrl = defaultApiUrl;
@@ -130,6 +159,7 @@ export function EventDetailPage() {
   const [message, setMessage] = useState("");
   const [phoneCopied, setPhoneCopied] = useState(false);
   const [recoveringTelegram, setRecoveringTelegram] = useState(false);
+  const [savedEvent, setSavedEvent] = useState(false);
   const feedbackRef = useRef<HTMLDivElement>(null);
   const {
     secondsLeft: telegramRedirectSeconds,
@@ -164,6 +194,55 @@ export function EventDetailPage() {
   useEffect(() => {
     setPhoneCopied(false);
   }, [orderResponse?.order.id]);
+
+  useEffect(() => {
+    if (!eventId) return;
+    try {
+      const raw = localStorage.getItem("ticketr_saved_events");
+      const set = raw ? (JSON.parse(raw) as string[]) : [];
+      setSavedEvent(Array.isArray(set) && set.includes(eventId));
+    } catch {
+      setSavedEvent(false);
+    }
+  }, [eventId]);
+
+  function toggleSaveEvent() {
+    if (!eventId) return;
+    try {
+      const raw = localStorage.getItem("ticketr_saved_events");
+      let ids = raw ? (JSON.parse(raw) as string[]) : [];
+      if (!Array.isArray(ids)) ids = [];
+      if (ids.includes(eventId)) {
+        ids = ids.filter((id) => id !== eventId);
+        setSavedEvent(false);
+      } else {
+        ids = [...ids, eventId];
+        setSavedEvent(true);
+      }
+      localStorage.setItem("ticketr_saved_events", JSON.stringify(ids));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function shareEventPage(title: string) {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setMessage("Link copied to clipboard.");
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(url);
+        setMessage("Link copied to clipboard.");
+      } catch {
+        setMessage("Could not share or copy link.");
+      }
+    }
+  }
 
   useEffect(() => {
     if (!message || !feedbackRef.current) return;
@@ -322,58 +401,76 @@ export function EventDetailPage() {
   const totalPaymentEtb = selectedTier ? unitPriceEtb * qtyForTotal : null;
 
   return (
-    <main className="pzm-detail">
-      <div className="pzm-detail__hero">
-        <img src={eventCoverImageUrl(event)} alt={event.name} className="pzm-detail__heroImg" fetchPriority="high" />
-        <div className="pzm-detail__heroScrim" />
-        <div className="pzm-detail__heroBar" aria-hidden>
-          <span className="pzm-detail__heroBarInner" />
-        </div>
-      </div>
-
-      <div className="pzm-detail__layout">
-        <article className="pzm-detail__main">
-          <Link to="/" className="pzm-detail__crumb">
-            <span className="pzm-detail__crumbIcon" aria-hidden>
-              ←
-            </span>{" "}
-            All events
-          </Link>
-          <div className="pzm-detail__head">
-            <span className="pzm-detail__badge">{category}</span>
-            <h1 className="pzm-detail__title">{event.name}</h1>
-            <ul className="pzm-detail__factList">
-              <li className="pzm-detail__fact">
-                <span className="pzm-detail__factIcon">
-                  <DetailIconCalendar />
-                </span>
-                <span>
-                  <span className="pzm-detail__factLabel">Date</span>
-                  {formatEventDate(event.startsAt)}
-                </span>
-              </li>
-              <li className="pzm-detail__fact">
-                <span className="pzm-detail__factIcon">
-                  <DetailIconClock />
-                </span>
-                <span>
-                  <span className="pzm-detail__factLabel">Time</span>
-                  {formatEventTimeRange(event.startsAt, event.endsAt)}
-                </span>
-              </li>
-              <li className="pzm-detail__fact">
-                <span className="pzm-detail__factIcon">
-                  <DetailIconPin />
-                </span>
-                <span>
-                  <span className="pzm-detail__factLabel">Venue</span>
-                  {event.location ?? "TBA"}
-                </span>
-              </li>
-            </ul>
+    <main className="pzm-detail pzm-detail--pazimo">
+      <header className="pzm-detail__hero pzm-detail__hero--pazimo">
+        <img
+          src={eventCoverImageUrl(event)}
+          alt=""
+          className="pzm-detail__heroImg"
+          fetchPriority="high"
+        />
+        <div className="pzm-detail__heroFade" aria-hidden />
+        <div className="pzm-detail__heroInner">
+          <div className="pzm-detail__heroTop">
+            <Link to="/" className="pzm-detail__crumb pzm-detail__crumb--hero">
+              <span className="pzm-detail__crumbIcon" aria-hidden>
+                ←
+              </span>{" "}
+              All events
+            </Link>
           </div>
+          <div className="pzm-detail__heroBottom">
+            <div className="pzm-detail__heroBottomMain">
+              <span className="pzm-detail__badge pzm-detail__badge--hero">{category}</span>
+              <h1 className="pzm-detail__title pzm-detail__title--hero">{event.name}</h1>
+              <ul className="pzm-detail__heroFacts">
+                <li>
+                  <span className="pzm-detail__heroFactIcon" aria-hidden>
+                    <DetailIconCalendar />
+                  </span>
+                  <span>{formatEventDate(event.startsAt)}</span>
+                </li>
+                <li>
+                  <span className="pzm-detail__heroFactIcon" aria-hidden>
+                    <DetailIconClock />
+                  </span>
+                  <span>{formatEventTimeRange(event.startsAt, event.endsAt)}</span>
+                </li>
+                <li>
+                  <span className="pzm-detail__heroFactIcon" aria-hidden>
+                    <DetailIconPin />
+                  </span>
+                  <span>{event.location ?? "TBA"}</span>
+                </li>
+              </ul>
+            </div>
+            <div className="pzm-detail__heroSocial">
+              <button
+                type="button"
+                className="pzm-detail__heroIconBtn"
+                onClick={toggleSaveEvent}
+                aria-label={savedEvent ? "Remove from saved" : "Save event"}
+                aria-pressed={savedEvent}
+              >
+                <DetailIconHeart filled={savedEvent} />
+              </button>
+              <button
+                type="button"
+                className="pzm-detail__heroIconBtn"
+                onClick={() => shareEventPage(event.name)}
+                aria-label="Share event"
+              >
+                <DetailIconShare />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="pzm-detail__layout pzm-detail__layout--pazimo">
+        <article className="pzm-detail__main pzm-detail__main--pazimo">
           {event.description?.trim() ? (
-            <div className="pzm-detail__about">
+            <div className="pzm-detail__about pzm-detail__about--solo">
               <h2 className="pzm-detail__aboutTitle">About this event</h2>
               <div className="pzm-detail__prose">
                 {event.description.split("\n").map((para, i) => (
@@ -381,7 +478,9 @@ export function EventDetailPage() {
                 ))}
               </div>
             </div>
-          ) : null}
+          ) : (
+            <p className="pzm-muted">No additional details for this event.</p>
+          )}
         </article>
 
         <aside className="pzm-detail__aside">
@@ -400,7 +499,32 @@ export function EventDetailPage() {
           <div className="pzm-ticketCard">
             <div className="pzm-ticketCard__accent" aria-hidden />
             <div className="pzm-ticketCard__intro">
-              <h2 className="pzm-ticketCard__heading">Tickets</h2>
+              <h2 className="pzm-ticketCard__heading">Select tickets</h2>
+              <div className="pzm-ticketCard__currency">
+                <span className="pzm-ticketCard__currencyLabel" id="currency-label">
+                  Select currency
+                </span>
+                <div
+                  className="pzm-ticketCard__currencyToggle"
+                  role="group"
+                  aria-labelledby="currency-label"
+                >
+                  <button
+                    type="button"
+                    className="pzm-ticketCard__currencyBtn pzm-ticketCard__currencyBtn--active"
+                  >
+                    Birr (ETB)
+                  </button>
+                  <button
+                    type="button"
+                    className="pzm-ticketCard__currencyBtn"
+                    disabled
+                    title="USD checkout is not available yet. Prices are in ETB."
+                  >
+                    Dollar (USD)
+                  </button>
+                </div>
+              </div>
               {soldOut ? (
                 <p className="pzm-ticketCard__soldOut">Sold out</p>
               ) : minPrice != null ? (
