@@ -1,4 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
+import { ORGANIZER_TELEGRAM_HANDLE, ORGANIZER_TELEGRAM_URL } from "../lib/organizerContact";
 
 export function Layout() {
   return (
@@ -31,6 +32,16 @@ export function Layout() {
             <div>
               <span className="pzm-footer__heading">Support</span>
               <a href="#buy">Buy tickets</a>
+            </div>
+            <div>
+              <span className="pzm-footer__heading">Organizers</span>
+              <p className="pzm-footer__organizer">
+                List your event: message{" "}
+                <a href={ORGANIZER_TELEGRAM_URL} target="_blank" rel="noreferrer">
+                  {ORGANIZER_TELEGRAM_HANDLE}
+                </a>{" "}
+                on Telegram.
+              </p>
             </div>
           </div>
         </div>

@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  install-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # Match Docker (node:20-alpine + pinned npm 10) so lockfile drift is caught before deploy.
+      - name: Pin npm 10 and verify lockfile
+        run: |
+          npm install -g npm@10.8.2
+          npm --version
+          npm ci
+          npm run build

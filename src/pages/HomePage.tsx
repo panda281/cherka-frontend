@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { ReceiptTelegramWaitPanel } from "../components/ReceiptTelegramWaitPanel";
+import { useTelegramReceiptRedirect } from "../hooks/useTelegramReceiptRedirect";
 import { Link } from "react-router-dom";
 import { EventCard } from "../components/EventCard";
 import { requestEvents } from "../lib/api";
@@ -12,8 +14,39 @@ import {
   minPriceEtb,
   publishedEvents
 } from "../lib/eventUtils";
+import { ORGANIZER_TELEGRAM_HANDLE, ORGANIZER_TELEGRAM_URL } from "../lib/organizerContact";
+import {
+  fetchTelegramDeepLink,
+  openTelegramBotUrl,
+  readReceiptSubmitBody,
+  RECEIPT_TELEGRAM_REDIRECT_SECONDS,
+  resolveReceiptRedirectUrl,
+  telegramFallbackMessage
+} from "../lib/telegramBot";
 import type { EventItem, OrderResponse } from "../types";
 import { CATEGORIES } from "../types";
+
+function homeToastTone(text: string): "success" | "error" | "warn" {
+  if (!text) return "error";
+  if (text.startsWith("Order created")) return "success";
+  if (text === "Opening Telegram again…") return "success";
+  if (
+    text.includes("Set up the ticket bot") ||
+    text.includes("No Telegram deep link") ||
+    text.includes("/claim ")
+  ) {
+    return "warn";
+  }
+  if (
+    text.includes("Open Telegram") ||
+    text.includes("Tap Start") ||
+    text.includes("continue with your ticket") ||
+    text.includes("Redirecting to Telegram")
+  ) {
+    return "success";
+  }
+  return "error";
+}
 
 const defaultApiUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 const userBotLink = import.meta.env.VITE_USER_BOT_LINK ?? "https://t.me/ticketr_user_demo_bot";
@@ -30,7 +63,13 @@ export function HomePage() {
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
   const [receiptNo, setReceiptNo] = useState("");
   const [submittingReceipt, setSubmittingReceipt] = useState(false);
+  const [recoveringTelegram, setRecoveringTelegram] = useState(false);
   const [message, setMessage] = useState("");
+  const {
+    secondsLeft: telegramRedirectSeconds,
+    scheduleRedirect,
+    cancelRedirect
+  } = useTelegramReceiptRedirect();
 
   const visible = useMemo(() => publishedEvents(events), [events]);
 
@@ -94,6 +133,7 @@ export function HomePage() {
     const qty = Number.isFinite(quantity) ? Math.max(1, Math.floor(Number(quantity))) : 1;
     setBuying(true);
     setMessage("");
+    cancelRedirect();
     setOrderResponse(null);
     try {
       const response = await fetch(`${apiBaseUrl}/orders`, {
@@ -126,6 +166,8 @@ export function HomePage() {
     }
     setSubmittingReceipt(true);
     setMessage("");
+    cancelRedirect();
+    const orderRef = orderResponse.order.orderRef;
     try {
       const formData = new FormData();
       formData.append("receiptNo", receiptNo.trim());
@@ -136,11 +178,57 @@ export function HomePage() {
       if (!response.ok) {
         throw new Error("Failed to submit receipt.");
       }
-      setMessage("Receipt submitted successfully. Open User Bot and use /status then /claim with your order ref.");
+      const receiptData = await readReceiptSubmitBody(response);
+      const tgUrl = receiptData.telegramOpenBotUrl;
+      const nextHint = receiptData.telegramNextStepHint?.trim();
+
+      const resolvedUrl = resolveReceiptRedirectUrl(
+        typeof tgUrl === "string" && tgUrl.length > 0 ? tgUrl : null,
+        orderRef,
+        userBotLink
+      );
+
+      setOrderResponse((prev) =>
+        prev
+          ? {
+              ...prev,
+              telegramOpenBotUrl: resolvedUrl,
+              telegramNextStepHint:
+                nextHint && nextHint.length > 0 ? nextHint : prev.telegramNextStepHint
+            }
+          : prev
+      );
+
+      scheduleRedirect(resolvedUrl, RECEIPT_TELEGRAM_REDIRECT_SECONDS);
+      setMessage(
+        nextHint && nextHint.length > 0
+          ? `${nextHint} Redirecting to Telegram in ${RECEIPT_TELEGRAM_REDIRECT_SECONDS} seconds.`
+          : `Receipt submitted. Redirecting to Telegram in ${RECEIPT_TELEGRAM_REDIRECT_SECONDS} seconds.`
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unexpected error.");
     } finally {
       setSubmittingReceipt(false);
+    }
+  }
+
+  async function recoverTelegramLinkLanding() {
+    if (!orderResponse?.order.id) return;
+    setRecoveringTelegram(true);
+    setMessage("");
+    try {
+      const url = await fetchTelegramDeepLink(apiBaseUrl, orderResponse.order.id);
+      if (url) {
+        setOrderResponse((prev) => (prev ? { ...prev, telegramOpenBotUrl: url } : prev));
+        openTelegramBotUrl(url);
+        setMessage("Opening Telegram again…");
+      } else {
+        setMessage(telegramFallbackMessage(orderResponse.order.orderRef));
+      }
+    } catch {
+      setMessage(telegramFallbackMessage(orderResponse.order.orderRef));
+    } finally {
+      setRecoveringTelegram(false);
     }
   }
 
@@ -221,6 +309,18 @@ export function HomePage() {
         </div>
       </section>
 
+      <section className="pzm-organizerHint" aria-label="For event organizers">
+        <div className="pzm-organizerHint__inner">
+          <p className="pzm-organizerHint__text">
+            <strong>Hosting an event?</strong> Send a message to{" "}
+            <a href={ORGANIZER_TELEGRAM_URL} target="_blank" rel="noreferrer">
+              {ORGANIZER_TELEGRAM_HANDLE}
+            </a>{" "}
+            on Telegram to have your event listed on Ticketr.
+          </p>
+        </div>
+      </section>
+
       <section className="pzm-section">
         <div className="pzm-section__head">
           <h2 className="pzm-section__title">Don&apos;t Miss Out</h2>
@@ -273,6 +373,7 @@ export function HomePage() {
                   setSelectedEventId(event.target.value);
                   setSelectedTierId("");
                   setQuantity(1);
+                  cancelRedirect();
                   setOrderResponse(null);
                 }}
               >
@@ -292,6 +393,7 @@ export function HomePage() {
                 onChange={(event) => {
                   setSelectedTierId(event.target.value);
                   setQuantity(1);
+                  cancelRedirect();
                 }}
               >
                 <option value="">Select tier</option>
@@ -364,6 +466,25 @@ export function HomePage() {
               <p>
                 <strong>Note:</strong> {orderResponse.paymentInstruction.note}
               </p>
+              {typeof orderResponse.telegramOpenBotUrl === "string" &&
+              orderResponse.telegramOpenBotUrl.length > 0 ? (
+                <div className="pzm-order__earlyTg">
+                  <button
+                    type="button"
+                    className="pzm-btn pzm-btn--outline pzm-btn--block"
+                    onClick={() => openTelegramBotUrl(orderResponse.telegramOpenBotUrl!)}
+                  >
+                    Get ticket in Telegram
+                  </button>
+                  {orderResponse.telegramNextStepHint ? (
+                    <p className="pzm-order__tgHint">{orderResponse.telegramNextStepHint}</p>
+                  ) : (
+                    <p className="pzm-order__tgHint pzm-order__tgHint--muted">
+                      Opens Telegram with your order reference.
+                    </p>
+                  )}
+                </div>
+              ) : null}
               <div className="pzm-order__receipt">
                 <label className="pzm-field">
                   <span>Receipt number</span>
@@ -377,24 +498,64 @@ export function HomePage() {
                   type="button"
                   className="pzm-btn pzm-btn--outline"
                   onClick={submitReceiptFromLanding}
-                  disabled={submittingReceipt}
+                  disabled={
+                    submittingReceipt ||
+                    (telegramRedirectSeconds !== null && telegramRedirectSeconds > 0)
+                  }
                 >
                   {submittingReceipt ? "Submitting…" : "Submit receipt"}
                 </button>
               </div>
-              <p className="pzm-order__hint">
-                After payment, open{" "}
-                <a href={userBotLink} target="_blank" rel="noreferrer">
-                  User Bot
-                </a>{" "}
-                and use /status then /claim with your order ref.
-              </p>
+              {telegramRedirectSeconds !== null && telegramRedirectSeconds > 0 ? (
+                <div className="pzm-order__waitWrap">
+                  <ReceiptTelegramWaitPanel secondsLeft={telegramRedirectSeconds} />
+                </div>
+              ) : null}
+              <div className="pzm-order__telegramFoot">
+                <button
+                  type="button"
+                  className="pzm-btn pzm-btn--outline pzm-btn--block"
+                  onClick={recoverTelegramLinkLanding}
+                  disabled={
+                    recoveringTelegram ||
+                    submittingReceipt ||
+                    (telegramRedirectSeconds !== null && telegramRedirectSeconds > 0)
+                  }
+                >
+                  {recoveringTelegram ? "Loading…" : "Get Telegram link again"}
+                </button>
+                <p className="pzm-order__footNote">
+                  Fetches the link from the server if you closed Telegram or need another try.
+                </p>
+                {typeof orderResponse.telegramOpenBotUrl === "string" &&
+                orderResponse.telegramOpenBotUrl.length > 0 ? (
+                  <p className="pzm-order__hint">
+                    <a
+                      href={orderResponse.telegramOpenBotUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open in Telegram (same link)
+                    </a>
+                  </p>
+                ) : (
+                  <p className="pzm-order__hint pzm-order__hint--fallback">
+                    No deep link yet — after the server is configured, use{" "}
+                    <a href={userBotLink} target="_blank" rel="noreferrer">
+                      User Bot
+                    </a>{" "}
+                    with <code className="pzm-order__inlineRef">/claim {orderResponse.order.orderRef}</code>
+                  </p>
+                )}
+              </div>
             </div>
           ) : null}
         </div>
       </section>
 
-      {message ? <p className="pzm-toast">{message}</p> : null}
+      {message ? (
+        <p className={`pzm-toast pzm-toast--${homeToastTone(message)}`}>{message}</p>
+      ) : null}
     </>
   );
 }

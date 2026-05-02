@@ -1,10 +1,11 @@
 # Multi-stage: Vite build → nginx static
-# Regenerate package-lock.json with the same npm major as this image (npm 10 on node:20-alpine) so `npm ci` passes.
+# Pin npm 10.x before `npm ci` so the image matches lockfile resolution (see .github/workflows/ci.yml).
+# Do not switch to `npm install -g npm@11` without regenerating package-lock.json with that npm and committing it.
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install -g npm@10.8.2 && npm ci
 
 COPY . .
 
