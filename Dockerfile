@@ -2,6 +2,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json ./
+# Match npm major used when generating package-lock.json (avoids npm ci EUSAGE in Alpine vs dev machine)
+RUN npm install -g npm@11
 RUN npm ci
 
 COPY . .
