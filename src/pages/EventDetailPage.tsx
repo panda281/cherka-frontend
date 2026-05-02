@@ -317,6 +317,9 @@ export function EventDetailPage() {
     const n = Number(p);
     return Number.isFinite(n) ? n : 0;
   };
+  const qtyForTotal = Number.isFinite(quantity) ? Math.max(1, Math.floor(Number(quantity))) : 1;
+  const unitPriceEtb = selectedTier ? priceNum(selectedTier.price) : 0;
+  const totalPaymentEtb = selectedTier ? unitPriceEtb * qtyForTotal : null;
 
   return (
     <main className="pzm-detail">
@@ -508,6 +511,22 @@ export function EventDetailPage() {
                       </button>
                     </div>
                   </div>
+
+                  {totalPaymentEtb != null ? (
+                    <div className="pzm-ticketCard__total">
+                      <div className="pzm-ticketCard__totalRow">
+                        <span className="pzm-ticketCard__totalLabel">Total payment</span>
+                        <span className="pzm-ticketCard__totalAmount">
+                          ETB {totalPaymentEtb.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="pzm-ticketCard__totalBreakdown">
+                        {unitPriceEtb.toLocaleString()} ETB × {qtyForTotal}{" "}
+                        {qtyForTotal === 1 ? "ticket" : "tickets"}
+                      </p>
+                    </div>
+                  ) : null}
+
                   <button
                     type="button"
                     className="pzm-btn pzm-btn--cta pzm-btn--block"

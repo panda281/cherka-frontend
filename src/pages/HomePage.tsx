@@ -124,6 +124,14 @@ export function HomePage() {
 
   const selectedEvent = events.find((eventItem) => eventItem.id === selectedEventId) ?? null;
   const selectedTiers = selectedEvent?.tiers.filter((tier) => tier.active) ?? [];
+  const selectedTierPick = selectedTiers.find((tier) => tier.id === selectedTierId) ?? null;
+  const tierPriceNum = (p: string) => {
+    const n = Number(p);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const qtyForTotalHome = Number.isFinite(quantity) ? Math.max(1, Math.floor(Number(quantity))) : 1;
+  const totalPaymentHomeEtb =
+    selectedTierPick != null ? tierPriceNum(selectedTierPick.price) * qtyForTotalHome : null;
 
   async function buyTicket() {
     if (!selectedEventId || !selectedTierId) {
@@ -449,6 +457,19 @@ export function HomePage() {
               {buying ? "Creating order…" : "Buy now"}
             </button>
           </div>
+
+          {totalPaymentHomeEtb != null && selectedTierPick ? (
+            <div className="pzm-buy__total">
+              <div className="pzm-buy__totalRow">
+                <span className="pzm-buy__totalLabel">Total payment</span>
+                <span className="pzm-buy__totalAmount">ETB {totalPaymentHomeEtb.toLocaleString()}</span>
+              </div>
+              <p className="pzm-buy__totalBreakdown">
+                {tierPriceNum(selectedTierPick.price).toLocaleString()} ETB × {qtyForTotalHome}{" "}
+                {qtyForTotalHome === 1 ? "ticket" : "tickets"}
+              </p>
+            </div>
+          ) : null}
 
           {orderResponse ? (
             <div className="pzm-order">
