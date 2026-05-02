@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { requestEvents } from "../lib/api";
 import {
@@ -75,6 +75,26 @@ function DetailIconPin({ className }: { className?: string }) {
 const defaultApiUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 const userBotLink = import.meta.env.VITE_USER_BOT_LINK ?? "https://t.me/ticketr_user_demo_bot";
 
+/** Shown when API omits receiverNumber; override with VITE_PAYMENT_PHONE */
+const defaultPaymentPhone =
+  String(import.meta.env.VITE_PAYMENT_PHONE ?? "").trim() || "947360468";
+
+function resolvePaymentPhone(order: OrderResponse | null): string {
+  const fromApi = order?.paymentInstruction.receiverNumber?.trim();
+  if (fromApi) return fromApi;
+  return defaultPaymentPhone;
+}
+
+function feedbackTone(text: string): "success" | "error" {
+  if (
+    text.startsWith("Order created") ||
+    text.startsWith("Receipt submitted")
+  ) {
+    return "success";
+  }
+  return "error";
+}
+
 export function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const apiBaseUrl = defaultApiUrl;
@@ -86,6 +106,8 @@ export function EventDetailPage() {
   const [receiptNo, setReceiptNo] = useState("");
   const [submittingReceipt, setSubmittingReceipt] = useState(false);
   const [message, setMessage] = useState("");
+  const [phoneCopied, setPhoneCopied] = useState(false);
+  const feedbackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +130,15 @@ export function EventDetailPage() {
       cancelled = true;
     };
   }, [apiBaseUrl, eventId]);
+
+  useEffect(() => {
+    setPhoneCopied(false);
+  }, [orderResponse?.order.id]);
+
+  useEffect(() => {
+    if (!message || !feedbackRef.current) return;
+    feedbackRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [message]);
 
   const event = events.find((e) => e.id === eventId);
   const pub = publishedEvents(events);
@@ -139,6 +170,16 @@ export function EventDetailPage() {
       setMessage(error instanceof Error ? error.message : "Unexpected error.");
     } finally {
       setBuying(false);
+    }
+  }
+
+  async function copyPaymentPhone(phone: string) {
+    try {
+      await navigator.clipboard.writeText(phone);
+      setPhoneCopied(true);
+      window.setTimeout(() => setPhoneCopied(false), 2000);
+    } catch {
+      setMessage("Could not copy automatically. Select the number and copy manually.");
     }
   }
 
@@ -259,6 +300,18 @@ export function EventDetailPage() {
         </article>
 
         <aside className="pzm-detail__aside">
+          {message ? (
+            <div
+              ref={feedbackRef}
+              role="status"
+              aria-live="polite"
+              className={
+                "pzm-detail__feedback pzm-detail__feedback--" + feedbackTone(message)
+              }
+            >
+              {message}
+            </div>
+          ) : null}
           <div className="pzm-ticketCard">
             <div className="pzm-ticketCard__accent" aria-hidden />
             <div className="pzm-ticketCard__intro">
@@ -338,9 +391,27 @@ export function EventDetailPage() {
               <div className="pzm-order pzm-order--compact">
                 <div className="pzm-order__accent" aria-hidden />
                 <h3 className="pzm-order__title">Complete payment</h3>
+                <p className="pzm-order__steps">
+                  Send the exact amount to the number below, then enter your Telebirr receipt number and
+                  submit.
+                </p>
                 <div className="pzm-order__refBox">
                   <span className="pzm-order__refLabel">Order ref</span>
                   <code className="pzm-order__ref">{orderResponse.order.orderRef}</code>
+                </div>
+                <div className="pzm-order__phoneBox">
+                  <span className="pzm-order__phoneLabel">Send payment to this number</span>
+                  <div className="pzm-order__phoneRow">
+                    <code className="pzm-order__phone">{resolvePaymentPhone(orderResponse)}</code>
+                    <button
+                      type="button"
+                      className="pzm-order__copyBtn"
+                      aria-label={phoneCopied ? "Phone number copied" : "Copy phone number"}
+                      onClick={() => copyPaymentPhone(resolvePaymentPhone(orderResponse))}
+                    >
+                      {phoneCopied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
                 </div>
                 <p className="pzm-order__amountLine">
                   Pay{" "}
@@ -380,8 +451,6 @@ export function EventDetailPage() {
           </div>
         </aside>
       </div>
-
-      {message ? <p className="pzm-toast pzm-toast--detail">{message}</p> : null}
     </main>
   );
 }
