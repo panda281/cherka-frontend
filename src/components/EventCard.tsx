@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { eventRoutePath } from "../lib/eventRoutes";
 import type { EventItem } from "../types";
 import { formatEventDate, eventCategory, eventCoverImageUrl, isSoldOut, minPriceEtb } from "../lib/eventUtils";
 
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export function EventCard({ event, featured, delayMs = 0 }: Props) {
+  const eventPath = eventRoutePath(event);
   const cardRef = useRef<HTMLElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -48,7 +50,7 @@ export function EventCard({ event, featured, delayMs = 0 }: Props) {
       className={`pzm-card ${featured ? "pzm-card--featured" : ""} ${isVisible ? "pzm-card--visible" : ""}`}
       style={{ transitionDelay: `${delayMs}ms` }}
     >
-      <Link to={`/event/${event.id}`} className="pzm-card__mediaLink">
+      <Link to={eventPath} className="pzm-card__mediaLink">
         <div className="pzm-card__media">
           <img src={eventCoverImageUrl(event)} alt={event.name} className="pzm-card__img" loading="lazy" />
           <span className="pzm-card__badge">{category}</span>
@@ -61,7 +63,7 @@ export function EventCard({ event, featured, delayMs = 0 }: Props) {
         </div>
       </Link>
       <div className="pzm-card__body">
-        <Link to={`/event/${event.id}`} className="pzm-card__titleLink">
+        <Link to={eventPath} className="pzm-card__titleLink">
           <h3 className="pzm-card__title">{event.name}</h3>
         </Link>
         <p className="pzm-card__meta">
@@ -80,7 +82,7 @@ export function EventCard({ event, featured, delayMs = 0 }: Props) {
               Sold Out
             </span>
           ) : (
-            <Link to={`/event/${event.id}`} className="pzm-btn pzm-btn--dark pzm-btn--sm">
+            <Link to={eventPath} className="pzm-btn pzm-btn--dark pzm-btn--sm">
               Get Tickets
             </Link>
           )}

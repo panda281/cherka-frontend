@@ -5,6 +5,8 @@ import { useTelegramReceiptRedirect } from "../hooks/useTelegramReceiptRedirect"
 import { Link } from "react-router-dom";
 import { EventCard } from "../components/EventCard";
 import { requestEvents } from "../lib/api";
+import { eventRoutePath } from "../lib/eventRoutes";
+import { applyJsonLd, applySeo, clearJsonLd } from "../lib/seo";
 import { DEFAULT_HERO_UNSPLASH } from "../lib/unsplashPlaceholders";
 import {
   formatEventDate,
@@ -73,6 +75,24 @@ export function HomePage() {
   } = useTelegramReceiptRedirect();
 
   const visible = useMemo(() => publishedEvents(events), [events]);
+
+  useEffect(() => {
+    applySeo({
+      title: "Ticketr — Featured Events and Ticket Booking",
+      description:
+        "Discover featured events, buy tickets securely, and complete your booking flow instantly on Ticketr.",
+      path: "/",
+      image: "/logo/ticketr%20logo-02.svg",
+      type: "website"
+    });
+    applyJsonLd("home-website", {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Ticketr",
+      url: window.location.origin
+    });
+    return () => clearJsonLd("home-website");
+  }, []);
 
   const filtered = useMemo(() => {
     if (category === "All") return visible;
@@ -290,7 +310,7 @@ export function HomePage() {
                   </span>
                 ) : (
                   <>
-                    <Link to={`/event/${featured.id}`} className="pzm-btn pzm-btn--light pzm-btn--lg">
+                    <Link to={eventRoutePath(featured)} className="pzm-btn pzm-btn--light pzm-btn--lg">
                       Get Tickets
                     </Link>
                     {heroMin != null ? (
@@ -362,38 +382,34 @@ export function HomePage() {
         </RevealOnScroll>
       ) : null}
 
-      <RevealOnScroll delayMs={80}>
-        <section className={"pzm-section" + (singleEventHome ? " pzm-section--solo" : "")}>
-          <div className="pzm-section__head">
-            <div>
-              <h2 className="pzm-section__title">
-                {singleEventHome ? "Happening now" : "Don't Miss Out"}
-              </h2>
-              {singleEventHome ? (
-                <p className="pzm-section__subtitle pzm-section__subtitle--solo">
-                  Your featured event — tap the card for full details and tickets.
-                </p>
+      {carousel.length > 0 ? (
+        <RevealOnScroll delayMs={80}>
+          <section className={"pzm-section" + (singleEventHome ? " pzm-section--solo" : "")}>
+            <div className="pzm-section__head">
+              <div>
+                <h2 className="pzm-section__title">
+                  {singleEventHome ? "Happening now" : "Don't Miss Out"}
+                </h2>
+                {singleEventHome ? (
+                  <p className="pzm-section__subtitle pzm-section__subtitle--solo">
+                    Your featured event — tap the card for full details and tickets.
+                  </p>
+                ) : null}
+              </div>
+              {!singleEventHome ? (
+                <Link to="/#all" className="pzm-section__link">
+                  View all
+                </Link>
               ) : null}
             </div>
-            {!singleEventHome ? (
-              <Link to="/#all" className="pzm-section__link">
-                View all
-              </Link>
-            ) : null}
-          </div>
-          <div className={"pzm-carousel" + (singleEventHome ? " pzm-carousel--solo" : "")}>
-            {loadingEvents && !carousel.length ? (
-              <p className="pzm-muted">Loading events…</p>
-            ) : carousel.length === 0 ? (
-              <p className="pzm-muted">No events to show.</p>
-            ) : (
-              carousel.map((e, index) => (
+            <div className={"pzm-carousel" + (singleEventHome ? " pzm-carousel--solo" : "")}>
+              {carousel.map((e, index) => (
                 <EventCard key={e.id} event={e} featured delayMs={index * 65} />
-              ))
-            )}
-          </div>
-        </section>
-      </RevealOnScroll>
+              ))}
+            </div>
+          </section>
+        </RevealOnScroll>
+      ) : null}
 
       <RevealOnScroll delayMs={120}>
         <section id="all" className="pzm-section pzm-section--alt">

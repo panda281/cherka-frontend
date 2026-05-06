@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { requestEvents } from "../lib/api";
+import { eventRouteRef, extractEventIdFromRef, slugifyEventName } from "../lib/eventRoutes";
+import { applyJsonLd, applySeo, clearJsonLd } from "../lib/seo";
 import {
   formatEventDate,
   formatEventTimeRange,
@@ -147,7 +149,9 @@ function DetailIconShare() {
 }
 
 export function EventDetailPage() {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventRef } = useParams<{ eventRef: string }>();
+  const navigate = useNavigate();
+  const resolvedEventId = extractEventIdFromRef(eventRef ?? "");
   const apiBaseUrl = defaultApiUrl;
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,34 +194,34 @@ export function EventDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [apiBaseUrl, eventId, cancelRedirect]);
+  }, [apiBaseUrl, eventRef, cancelRedirect]);
 
   useEffect(() => {
     setPhoneCopied(false);
   }, [orderResponse?.order.id]);
 
   useEffect(() => {
-    if (!eventId) return;
+    if (!resolvedEventId) return;
     try {
       const raw = localStorage.getItem("ticketr_saved_events");
       const set = raw ? (JSON.parse(raw) as string[]) : [];
-      setSavedEvent(Array.isArray(set) && set.includes(eventId));
+      setSavedEvent(Array.isArray(set) && set.includes(resolvedEventId));
     } catch {
       setSavedEvent(false);
     }
-  }, [eventId]);
+  }, [resolvedEventId]);
 
   function toggleSaveEvent() {
-    if (!eventId) return;
+    if (!resolvedEventId) return;
     try {
       const raw = localStorage.getItem("ticketr_saved_events");
       let ids = raw ? (JSON.parse(raw) as string[]) : [];
       if (!Array.isArray(ids)) ids = [];
-      if (ids.includes(eventId)) {
-        ids = ids.filter((id) => id !== eventId);
+      if (ids.includes(resolvedEventId)) {
+        ids = ids.filter((id) => id !== resolvedEventId);
         setSavedEvent(false);
       } else {
-        ids = [...ids, eventId];
+        ids = [...ids, resolvedEventId];
         setSavedEvent(true);
       }
       localStorage.setItem("ticketr_saved_events", JSON.stringify(ids));
@@ -250,12 +254,78 @@ export function EventDetailPage() {
     feedbackRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [message]);
 
-  const event = events.find((e) => e.id === eventId);
+  const event =
+    events.find((e) => e.id === resolvedEventId) ??
+    (eventRef ? events.find((e) => slugifyEventName(e.name) === eventRef) : undefined);
   const pub = publishedEvents(events);
   const eventPublished = event && pub.some((e) => e.id === event.id);
   const tiers = event?.tiers.filter((t) => t.active) ?? [];
   const soldOut = event ? isSoldOut(event) : true;
   const minPrice = event ? minPriceEtb(event) : null;
+
+  useEffect(() => {
+    if (!event || !eventPublished || !eventRef) return;
+    const canonicalRef = eventRouteRef(event);
+    if (eventRef !== canonicalRef) {
+      navigate(`/event/${canonicalRef}`, { replace: true });
+    }
+  }, [event, eventPublished, eventRef, navigate]);
+
+  useEffect(() => {
+    if (!event || !eventPublished) {
+      applySeo({
+        title: "Event Not Found — Ticketr",
+        description: "This event is unavailable. Browse other upcoming experiences on Ticketr.",
+        path: window.location.pathname,
+        image: "/logo/ticketr%20logo-02.svg",
+        type: "website"
+      });
+      clearJsonLd("event");
+      return;
+    }
+
+    const title = `${event.name} — Tickets on Ticketr`;
+    const description =
+      event.description?.trim() ||
+      `${formatEventDate(event.startsAt)} at ${event.location ?? "TBA"}. Book your ticket on Ticketr.`;
+    const image = eventCoverImageUrl(event);
+    applySeo({
+      title,
+      description,
+      path: `/event/${eventRouteRef(event)}`,
+      image,
+      type: "article"
+    });
+    applyJsonLd("event", {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      name: event.name,
+      startDate: event.startsAt,
+      endDate: event.endsAt,
+      eventStatus: "https://schema.org/EventScheduled",
+      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+      location: {
+        "@type": "Place",
+        name: event.location ?? "Venue TBA"
+      },
+      image: [image],
+      description,
+      offers:
+        minPrice != null
+          ? {
+              "@type": "Offer",
+              price: String(minPrice),
+              priceCurrency: "ETB",
+              availability: soldOut
+                ? "https://schema.org/SoldOut"
+                : "https://schema.org/InStock",
+              url: `${window.location.origin}/event/${eventRouteRef(event)}`
+            }
+          : undefined
+    });
+
+    return () => clearJsonLd("event");
+  }, [event, eventPublished, minPrice, soldOut]);
 
   async function buyTicket() {
     if (!event?.id || !selectedTierId) {
