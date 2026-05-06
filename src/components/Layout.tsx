@@ -7,7 +7,7 @@ export function Layout() {
       <header className="pzm-header">
         <div className="pzm-header__inner">
           <Link to="/" className="pzm-logo">
-            Ticketr
+            <img src="/logo/ticketr logo-02.svg" alt="Ticketr" className="pzm-logo__img" />
           </Link>
           <nav className="pzm-nav" aria-label="Main">
             <Link to="/#events">Explore Events</Link>

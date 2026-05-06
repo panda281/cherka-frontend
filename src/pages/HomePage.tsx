@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ReceiptTelegramWaitPanel } from "../components/ReceiptTelegramWaitPanel";
+import { RevealOnScroll } from "../components/RevealOnScroll";
 import { useTelegramReceiptRedirect } from "../hooks/useTelegramReceiptRedirect";
 import { Link } from "react-router-dom";
 import { EventCard } from "../components/EventCard";
@@ -78,8 +79,17 @@ export function HomePage() {
     return visible.filter((e) => eventCategory(e) === category);
   }, [visible, category]);
 
-  const featured = visible[0] ?? null;
-  const carousel = visible.slice(0, 8);
+  const featuredEvents = useMemo(
+    () =>
+      visible
+        .filter((e) => e.featured === true)
+        .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()),
+    [visible]
+  );
+  const featured = featuredEvents[0] ?? visible[0] ?? null;
+  const featuredRail = featuredEvents.slice(1, 9);
+  const nonFeatured = useMemo(() => visible.filter((e) => e.id !== featured?.id && !e.featured), [visible, featured]);
+  const carousel = (nonFeatured.length > 0 ? nonFeatured : visible.filter((e) => e.id !== featured?.id)).slice(0, 8);
 
   function applyEventsPayload(payload: EventItem[]) {
     setEvents(payload);
@@ -323,70 +333,94 @@ export function HomePage() {
         </section>
       ) : null}
 
-      <section className="pzm-organizerHint" aria-label="For event organizers">
-        <div className="pzm-organizerHint__inner">
-          <p className="pzm-organizerHint__text">
-            <strong>Hosting an event?</strong> Send a message to{" "}
-            <a href={ORGANIZER_TELEGRAM_URL} target="_blank" rel="noreferrer">
-              {ORGANIZER_TELEGRAM_HANDLE}
-            </a>{" "}
-            on Telegram to have your event listed on Ticketr.
-          </p>
-        </div>
-      </section>
+      <RevealOnScroll delayMs={40}>
+        <section className="pzm-organizerHint" aria-label="For event organizers">
+          <div className="pzm-organizerHint__inner">
+            <p className="pzm-organizerHint__text">
+              <strong>Hosting an event?</strong> Send a message to{" "}
+              <a href={ORGANIZER_TELEGRAM_URL} target="_blank" rel="noreferrer">
+                {ORGANIZER_TELEGRAM_HANDLE}
+              </a>{" "}
+              on Telegram to have your event listed on Ticketr.
+            </p>
+          </div>
+        </section>
+      </RevealOnScroll>
 
-      <section className={"pzm-section" + (singleEventHome ? " pzm-section--solo" : "")}>
-        <div className="pzm-section__head">
-          <div>
-            <h2 className="pzm-section__title">
-              {singleEventHome ? "Happening now" : "Don't Miss Out"}
-            </h2>
-            {singleEventHome ? (
-              <p className="pzm-section__subtitle pzm-section__subtitle--solo">
-                Your featured event — tap the card for full details and tickets.
-              </p>
+      {featuredRail.length > 0 ? (
+        <RevealOnScroll delayMs={65}>
+          <section className="pzm-section pzm-section--featuredRail" aria-label="Featured picks">
+            <div className="pzm-section__head">
+              <h2 className="pzm-section__title">Featured Picks</h2>
+            </div>
+            <div className="pzm-carousel">
+              {featuredRail.map((e, index) => (
+                <EventCard key={e.id} event={e} featured delayMs={index * 65} />
+              ))}
+            </div>
+          </section>
+        </RevealOnScroll>
+      ) : null}
+
+      <RevealOnScroll delayMs={80}>
+        <section className={"pzm-section" + (singleEventHome ? " pzm-section--solo" : "")}>
+          <div className="pzm-section__head">
+            <div>
+              <h2 className="pzm-section__title">
+                {singleEventHome ? "Happening now" : "Don't Miss Out"}
+              </h2>
+              {singleEventHome ? (
+                <p className="pzm-section__subtitle pzm-section__subtitle--solo">
+                  Your featured event — tap the card for full details and tickets.
+                </p>
+              ) : null}
+            </div>
+            {!singleEventHome ? (
+              <Link to="/#all" className="pzm-section__link">
+                View all
+              </Link>
             ) : null}
           </div>
-          {!singleEventHome ? (
-            <Link to="/#all" className="pzm-section__link">
-              View all
-            </Link>
-          ) : null}
-        </div>
-        <div className={"pzm-carousel" + (singleEventHome ? " pzm-carousel--solo" : "")}>
-          {loadingEvents && !carousel.length ? (
-            <p className="pzm-muted">Loading events…</p>
-          ) : carousel.length === 0 ? (
-            <p className="pzm-muted">No events to show.</p>
-          ) : (
-            carousel.map((e) => <EventCard key={e.id} event={e} featured />)
-          )}
-        </div>
-      </section>
-
-      <section id="all" className="pzm-section pzm-section--alt">
-        <div className="pzm-section__head">
-          <h2 className="pzm-section__title">All Events</h2>
-          <button type="button" className="pzm-refresh" onClick={refreshEvents} disabled={loadingEvents}>
-            {loadingEvents ? "Refreshing…" : "Refresh"}
-          </button>
-        </div>
-        {filtered.length === 0 ? (
-          <p className="pzm-muted">No events in this category.</p>
-        ) : (
-          <div className={"pzm-grid" + (singleEventHome ? " pzm-grid--solo" : "")}>
-            {filtered.map((e) => (
-              <EventCard key={e.id} event={e} />
-            ))}
+          <div className={"pzm-carousel" + (singleEventHome ? " pzm-carousel--solo" : "")}>
+            {loadingEvents && !carousel.length ? (
+              <p className="pzm-muted">Loading events…</p>
+            ) : carousel.length === 0 ? (
+              <p className="pzm-muted">No events to show.</p>
+            ) : (
+              carousel.map((e, index) => (
+                <EventCard key={e.id} event={e} featured delayMs={index * 65} />
+              ))
+            )}
           </div>
-        )}
-      </section>
+        </section>
+      </RevealOnScroll>
 
-      <section id="events" className="pzm-section">
-        <div className="pzm-section__head">
-          <h2 className="pzm-section__title">Buy tickets</h2>
-          <p className="pzm-section__subtitle">Select an event and tier, pay via Telebirr, then submit your receipt.</p>
-        </div>
+      <RevealOnScroll delayMs={120}>
+        <section id="all" className="pzm-section pzm-section--alt">
+          <div className="pzm-section__head">
+            <h2 className="pzm-section__title">All Events</h2>
+            <button type="button" className="pzm-refresh" onClick={refreshEvents} disabled={loadingEvents}>
+              {loadingEvents ? "Refreshing…" : "Refresh"}
+            </button>
+          </div>
+          {filtered.length === 0 ? (
+            <p className="pzm-muted">No events in this category.</p>
+          ) : (
+            <div className={"pzm-grid" + (singleEventHome ? " pzm-grid--solo" : "")}>
+              {filtered.map((e, index) => (
+                <EventCard key={e.id} event={e} delayMs={index * 55} />
+              ))}
+            </div>
+          )}
+        </section>
+      </RevealOnScroll>
+
+      <RevealOnScroll delayMs={160}>
+        <section id="events" className="pzm-section">
+          <div className="pzm-section__head">
+            <h2 className="pzm-section__title">Buy tickets</h2>
+            <p className="pzm-section__subtitle">Select an event and tier, pay via Telebirr, then submit your receipt.</p>
+          </div>
 
         <div id="buy" className="pzm-buy">
           <div className="pzm-buy__form">
@@ -589,7 +623,8 @@ export function HomePage() {
             </div>
           ) : null}
         </div>
-      </section>
+        </section>
+      </RevealOnScroll>
 
       {message ? (
         <p className={`pzm-toast pzm-toast--${homeToastTone(message)}`}>{message}</p>

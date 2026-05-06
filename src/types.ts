@@ -14,6 +14,7 @@ export type EventItem = {
   endsAt: string;
   location: string | null;
   category?: string | null;
+  featured?: boolean;
   eventImageUrl?: string | null;
   status: string;
   tiers: EventTier[];

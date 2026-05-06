@@ -11,6 +11,7 @@ import {
   publishedEvents
 } from "../lib/eventUtils";
 import { ReceiptTelegramWaitPanel } from "../components/ReceiptTelegramWaitPanel";
+import { RevealOnScroll } from "../components/RevealOnScroll";
 import { useTelegramReceiptRedirect } from "../hooks/useTelegramReceiptRedirect";
 import {
   fetchTelegramDeepLink,
@@ -468,71 +469,74 @@ export function EventDetailPage() {
       </header>
 
       <div className="pzm-detail__layout pzm-detail__layout--pazimo">
-        <article className="pzm-detail__main pzm-detail__main--pazimo">
-          {event.description?.trim() ? (
-            <div className="pzm-detail__about pzm-detail__about--solo">
-              <h2 className="pzm-detail__aboutTitle">About this event</h2>
-              <div className="pzm-detail__prose">
-                {event.description.split("\n").map((para, i) => (
-                  <p key={i}>{para}</p>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="pzm-muted">No additional details for this event.</p>
-          )}
-        </article>
-
-        <aside className="pzm-detail__aside">
-          {message ? (
-            <div
-              ref={feedbackRef}
-              role="status"
-              aria-live="polite"
-              className={
-                "pzm-detail__feedback pzm-detail__feedback--" + feedbackTone(message)
-              }
-            >
-              {message}
-            </div>
-          ) : null}
-          <div className="pzm-ticketCard">
-            <div className="pzm-ticketCard__accent" aria-hidden />
-            <div className="pzm-ticketCard__intro">
-              <h2 className="pzm-ticketCard__heading">Select tickets</h2>
-              <div className="pzm-ticketCard__currency">
-                <span className="pzm-ticketCard__currencyLabel" id="currency-label">
-                  Select currency
-                </span>
-                <div
-                  className="pzm-ticketCard__currencyToggle"
-                  role="group"
-                  aria-labelledby="currency-label"
-                >
-                  <button
-                    type="button"
-                    className="pzm-ticketCard__currencyBtn pzm-ticketCard__currencyBtn--active"
-                  >
-                    Birr (ETB)
-                  </button>
-                  <button
-                    type="button"
-                    className="pzm-ticketCard__currencyBtn"
-                    disabled
-                    title="USD checkout is not available yet. Prices are in ETB."
-                  >
-                    Dollar (USD)
-                  </button>
+        <RevealOnScroll className="pzm-detail__mainWrap" delayMs={40}>
+          <article className="pzm-detail__main pzm-detail__main--pazimo">
+            {event.description?.trim() ? (
+              <div className="pzm-detail__about pzm-detail__about--solo">
+                <h2 className="pzm-detail__aboutTitle">About this event</h2>
+                <div className="pzm-detail__prose">
+                  {event.description.split("\n").map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
                 </div>
               </div>
-              {soldOut ? (
-                <p className="pzm-ticketCard__soldOut">Sold out</p>
-              ) : minPrice != null ? (
-                <p className="pzm-ticketCard__from">
-                  From <strong>{minPrice.toLocaleString()} ETB</strong>
-                </p>
-              ) : null}
-            </div>
+            ) : (
+              <p className="pzm-muted">No additional details for this event.</p>
+            )}
+          </article>
+        </RevealOnScroll>
+
+        <RevealOnScroll className="pzm-detail__asideWrap" delayMs={100}>
+          <aside className="pzm-detail__aside">
+            {message ? (
+              <div
+                ref={feedbackRef}
+                role="status"
+                aria-live="polite"
+                className={
+                  "pzm-detail__feedback pzm-detail__feedback--" + feedbackTone(message)
+                }
+              >
+                {message}
+              </div>
+            ) : null}
+            <div className="pzm-ticketCard">
+              <div className="pzm-ticketCard__accent" aria-hidden />
+              <div className="pzm-ticketCard__intro">
+                <h2 className="pzm-ticketCard__heading">Select tickets</h2>
+                <div className="pzm-ticketCard__currency">
+                  <span className="pzm-ticketCard__currencyLabel" id="currency-label">
+                    Select currency
+                  </span>
+                  <div
+                    className="pzm-ticketCard__currencyToggle"
+                    role="group"
+                    aria-labelledby="currency-label"
+                  >
+                    <button
+                      type="button"
+                      className="pzm-ticketCard__currencyBtn pzm-ticketCard__currencyBtn--active"
+                    >
+                      Birr (ETB)
+                    </button>
+                    <button
+                      type="button"
+                      className="pzm-ticketCard__currencyBtn"
+                      disabled
+                      title="USD checkout is not available yet. Prices are in ETB."
+                    >
+                      Dollar (USD)
+                    </button>
+                  </div>
+                </div>
+                {soldOut ? (
+                  <p className="pzm-ticketCard__soldOut">Sold out</p>
+                ) : minPrice != null ? (
+                  <p className="pzm-ticketCard__from">
+                    From <strong>{minPrice.toLocaleString()} ETB</strong>
+                  </p>
+                ) : null}
+              </div>
 
             {!soldOut && tiers.length > 0 ? (
               <>
@@ -783,8 +787,9 @@ export function EventDetailPage() {
                 </div>
               </div>
             ) : null}
-          </div>
-        </aside>
+            </div>
+          </aside>
+        </RevealOnScroll>
       </div>
     </main>
   );
