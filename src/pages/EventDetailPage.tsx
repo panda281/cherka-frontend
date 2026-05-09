@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { requestEvents } from "../lib/api";
+import { createOrder, requestEvents } from "../lib/api";
 import { eventRouteRef, extractEventIdFromRef, slugifyEventName } from "../lib/eventRoutes";
 import { applyJsonLd, applySeo, clearJsonLd } from "../lib/seo";
 import {
@@ -168,6 +168,7 @@ export function EventDetailPage() {
   const [phoneCopied, setPhoneCopied] = useState(false);
   const [recoveringTelegram, setRecoveringTelegram] = useState(false);
   const [savedEvent, setSavedEvent] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
   const feedbackRef = useRef<HTMLDivElement>(null);
   const {
     secondsLeft: telegramRedirectSeconds,
@@ -186,6 +187,7 @@ export function EventDetailPage() {
           setSelectedTierId("");
           setQuantity(1);
           setOrderResponse(null);
+          setPromoCode("");
           cancelRedirect();
         }
       } catch {
@@ -341,13 +343,12 @@ export function EventDetailPage() {
     cancelRedirect();
     setOrderResponse(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: event.id, tierId: selectedTierId, quantity: qty })
+      const payload = await createOrder(apiBaseUrl, {
+        eventId: event.id,
+        tierId: selectedTierId,
+        quantity: qty,
+        promoCode: promoCode.trim() || undefined
       });
-      if (!response.ok) throw new Error("Could not create order. Try again.");
-      const payload = (await response.json()) as OrderResponse;
       setOrderResponse(payload);
       setReceiptNo("");
       setMessage("Order created. Complete payment, then submit your receipt.");
@@ -635,6 +636,7 @@ export function EventDetailPage() {
                           onClick={() => {
                             setSelectedTierId(tier.id);
                             setQuantity(1);
+                            setOrderResponse(null);
                             cancelRedirect();
                           }}
                         >
@@ -745,6 +747,47 @@ export function EventDetailPage() {
                     </div>
                   ) : null}
 
+                  {selectedTierId ? (
+                    <div className="pzm-checkoutPromo" id="promo">
+                      <p className="pzm-ticketCard__tierLabel">Promo code</p>
+                      {unitPriceEtb > 0 ? (
+                        <p className="pzm-muted pzm-checkoutPromo__hint">
+                          List price per ticket: <strong>ETB {unitPriceEtb.toLocaleString()}</strong>
+                          {promoCode.trim()
+                            ? " — amount updates after continue if the code applies."
+                            : " — discounts apply when you continue to payment."}
+                        </p>
+                      ) : null}
+                      <div
+                        className={
+                          "pzm-tierOption pzm-promoOption" +
+                          (promoCode.trim() ? " pzm-promoOption--filled" : "")
+                        }
+                      >
+                        <span className="pzm-promoOption__glyph" aria-hidden>
+                          %
+                        </span>
+                        <div className="pzm-promoOption__main">
+                          <label className="visually-hidden" htmlFor="event-detail-promo">
+                            Promo code (optional)
+                          </label>
+                          <input
+                            id="event-detail-promo"
+                            className="pzm-promoOption__input"
+                            value={promoCode}
+                            onChange={(e) => {
+                              setPromoCode(e.target.value);
+                              setOrderResponse(null);
+                            }}
+                            placeholder="Partner or campaign code…"
+                            autoComplete="off"
+                            aria-label="Promo code (optional)"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <button
                     type="button"
                     className="pzm-btn pzm-btn--cta pzm-btn--block"
@@ -792,6 +835,14 @@ export function EventDetailPage() {
                     to {orderResponse.paymentInstruction.receiverName}
                   </span>
                 </p>
+                {orderResponse.paymentInstruction.subtotalEtb ? (
+                  <p className="pzm-order__small">
+                    Subtotal ETB {orderResponse.paymentInstruction.subtotalEtb}
+                    {orderResponse.paymentInstruction.promoDiscountEtb
+                      ? ` · promo −ETB ${orderResponse.paymentInstruction.promoDiscountEtb}`
+                      : ""}
+                  </p>
+                ) : null}
                 {typeof orderResponse.telegramOpenBotUrl === "string" &&
                 orderResponse.telegramOpenBotUrl.length > 0 ? (
                   <div className="pzm-order__earlyTg">

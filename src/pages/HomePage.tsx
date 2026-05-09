@@ -4,7 +4,7 @@ import { RevealOnScroll } from "../components/RevealOnScroll";
 import { useTelegramReceiptRedirect } from "../hooks/useTelegramReceiptRedirect";
 import { Link } from "react-router-dom";
 import { EventCard } from "../components/EventCard";
-import { requestEvents } from "../lib/api";
+import { createOrder, requestEvents } from "../lib/api";
 import { eventRoutePath } from "../lib/eventRoutes";
 import { applyJsonLd, applySeo, clearJsonLd } from "../lib/seo";
 import { DEFAULT_HERO_UNSPLASH } from "../lib/unsplashPlaceholders";
@@ -73,6 +73,7 @@ export function HomePage() {
   const [submittingReceipt, setSubmittingReceipt] = useState(false);
   const [recoveringTelegram, setRecoveringTelegram] = useState(false);
   const [message, setMessage] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const {
     secondsLeft: telegramRedirectSeconds,
     scheduleRedirect,
@@ -177,15 +178,12 @@ export function HomePage() {
     cancelRedirect();
     setOrderResponse(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: selectedEventId, tierId: selectedTierId, quantity: qty })
+      const payload = await createOrder(apiBaseUrl, {
+        eventId: selectedEventId,
+        tierId: selectedTierId,
+        quantity: qty,
+        promoCode: promoCode.trim() || undefined
       });
-      if (!response.ok) {
-        throw new Error("Could not create order. Try again.");
-      }
-      const payload = (await response.json()) as OrderResponse;
       setOrderResponse(payload);
       setReceiptNo("");
       setMessage("Order created. Complete payment, then submit receipt below.");
@@ -464,6 +462,7 @@ export function HomePage() {
                   setSelectedEventId(event.target.value);
                   setSelectedTierId("");
                   setQuantity(1);
+                  setPromoCode("");
                   cancelRedirect();
                   setOrderResponse(null);
                 }}
@@ -484,6 +483,7 @@ export function HomePage() {
                 onChange={(event) => {
                   setSelectedTierId(event.target.value);
                   setQuantity(1);
+                  setOrderResponse(null);
                   cancelRedirect();
                 }}
               >
@@ -539,6 +539,46 @@ export function HomePage() {
               </div>
             </div>
 
+            {selectedTierPick ? (
+              <div className="pzm-checkoutPromo pzm-buy__promoRow" id="promo">
+                <p className="pzm-ticketCard__tierLabel">Promo code</p>
+                <p className="pzm-muted pzm-checkoutPromo__hint">
+                  List price per ticket:{" "}
+                  <strong>ETB {effectiveTierPriceEtb(selectedTierPick).toLocaleString()}</strong>
+                  {promoCode.trim()
+                    ? " — pay amount is confirmed after you create the order."
+                    : " — applied when you tap Buy now."}
+                </p>
+                <div
+                  className={
+                    "pzm-tierOption pzm-promoOption" +
+                    (promoCode.trim() ? " pzm-promoOption--filled" : "")
+                  }
+                >
+                  <span className="pzm-promoOption__glyph" aria-hidden>
+                    %
+                  </span>
+                  <div className="pzm-promoOption__main">
+                    <label className="visually-hidden" htmlFor="home-buy-promo">
+                      Promo code (optional)
+                    </label>
+                    <input
+                      id="home-buy-promo"
+                      className="pzm-promoOption__input"
+                      value={promoCode}
+                      onChange={(event) => {
+                        setPromoCode(event.target.value);
+                        setOrderResponse(null);
+                      }}
+                      placeholder="Partner or campaign code…"
+                      autoComplete="off"
+                      aria-label="Promo code (optional)"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <button
               type="button"
               className="pzm-btn pzm-btn--dark"
@@ -576,6 +616,19 @@ export function HomePage() {
               <p>
                 <strong>Exact amount:</strong> ETB {orderResponse.paymentInstruction.exactAmount}
               </p>
+              {orderResponse.paymentInstruction.subtotalEtb ? (
+                <p>
+                  <strong>Subtotal:</strong> ETB {orderResponse.paymentInstruction.subtotalEtb}
+                  {orderResponse.paymentInstruction.promoDiscountEtb ? (
+                    <>
+                      {" "}
+                      <span className="pzm-order__promo">
+                        (promo −ETB {orderResponse.paymentInstruction.promoDiscountEtb})
+                      </span>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
               <p>
                 <strong>Note:</strong> {orderResponse.paymentInstruction.note}
               </p>

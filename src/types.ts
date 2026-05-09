@@ -29,6 +29,8 @@ export type OrderResponse = {
     receiverName: string;
     exactAmount: string;
     note: string;
+    subtotalEtb?: string;
+    promoDiscountEtb?: string;
   };
   /** From POST /orders — optional early deep link with ?start=orderRef */
   telegramOpenBotUrl?: string | null;
