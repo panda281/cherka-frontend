@@ -8,9 +8,12 @@ import {
   formatEventTimeRange,
   eventCategory,
   eventCoverImageUrl,
+  effectiveTierPriceEtb,
+  isEarlyBirdActive,
   isSoldOut,
   minPriceEtb,
-  publishedEvents
+  publishedEvents,
+  tierPriceNum
 } from "../lib/eventUtils";
 import { ReceiptTelegramWaitPanel } from "../components/ReceiptTelegramWaitPanel";
 import { RevealOnScroll } from "../components/RevealOnScroll";
@@ -463,12 +466,8 @@ export function EventDetailPage() {
 
   const category = eventCategory(event);
   const selectedTier = tiers.find((t) => t.id === selectedTierId);
-  const priceNum = (p: string) => {
-    const n = Number(p);
-    return Number.isFinite(n) ? n : 0;
-  };
   const qtyForTotal = Number.isFinite(quantity) ? Math.max(1, Math.floor(Number(quantity))) : 1;
-  const unitPriceEtb = selectedTier ? priceNum(selectedTier.price) : 0;
+  const unitPriceEtb = selectedTier ? effectiveTierPriceEtb(selectedTier) : 0;
   const totalPaymentEtb = selectedTier ? unitPriceEtb * qtyForTotal : null;
 
   return (
@@ -621,6 +620,9 @@ export function EventDetailPage() {
                   >
                     {tiers.map((tier) => {
                       const selected = selectedTierId === tier.id;
+                      const early = isEarlyBirdActive(tier);
+                      const listPrice = tierPriceNum(tier.price);
+                      const payNow = effectiveTierPriceEtb(tier);
                       return (
                         <button
                           key={tier.id}
@@ -642,11 +644,23 @@ export function EventDetailPage() {
                             {tier.tierCode ? (
                               <span className="pzm-tierOption__code">{tier.tierCode}</span>
                             ) : null}
+                            {early && tier.earlyBirdEndsAt ? (
+                              <span className="pzm-tierOption__early">
+                                Early bird · ends {formatEventDate(tier.earlyBirdEndsAt)}
+                              </span>
+                            ) : null}
                           </span>
                           <span className="pzm-tierOption__price">
                             <span className="pzm-tierOption__currency">ETB</span>
-                            <span className="pzm-tierOption__amount">
-                              {priceNum(tier.price).toLocaleString()}
+                            <span className="pzm-tierOption__amountRow">
+                              <span className="pzm-tierOption__amount">
+                                {payNow.toLocaleString()}
+                              </span>
+                              {early ? (
+                                <span className="pzm-tierOption__strike">
+                                  {listPrice.toLocaleString()}
+                                </span>
+                              ) : null}
                             </span>
                           </span>
                         </button>
@@ -657,7 +671,10 @@ export function EventDetailPage() {
                     <p className="pzm-ticketCard__selectionHint">
                       <strong>{selectedTier.tierName}</strong>
                       <span className="pzm-ticketCard__selectionDot" aria-hidden />
-                      {priceNum(selectedTier.price).toLocaleString()} ETB
+                      {effectiveTierPriceEtb(selectedTier).toLocaleString()} ETB
+                      {isEarlyBirdActive(selectedTier) ? (
+                        <span className="pzm-ticketCard__earlyHint"> (early bird)</span>
+                      ) : null}
                     </p>
                   ) : (
                     <p className="pzm-ticketCard__selectionHint pzm-ticketCard__selectionHint--mute">
@@ -719,8 +736,11 @@ export function EventDetailPage() {
                         </span>
                       </div>
                       <p className="pzm-ticketCard__totalBreakdown">
-                        {unitPriceEtb.toLocaleString()} ETB × {qtyForTotal}{" "}
-                        {qtyForTotal === 1 ? "ticket" : "tickets"}
+                        {unitPriceEtb.toLocaleString()} ETB
+                        {selectedTier && isEarlyBirdActive(selectedTier)
+                          ? " (early bird)"
+                          : ""}{" "}
+                        × {qtyForTotal} {qtyForTotal === 1 ? "ticket" : "tickets"}
                       </p>
                     </div>
                   ) : null}

@@ -215,6 +215,21 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+.pzm-hero__pricing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: min(36ch, 100%);
+}
+
+.pzm-hero__earlyNote {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgba(230, 210, 255, 0.95);
+}
+
 /* Category strip */
 .pzm-strip {
   background: linear-gradient(120deg, #ffffff 0%, #f8f3ff 100%);
@@ -1928,6 +1943,33 @@
   font-size: 1.12rem;
   letter-spacing: -0.02em;
   line-height: 1;
+}
+
+.pzm-tierOption__amountRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pzm-tierOption__strike {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--pzm-muted);
+  text-decoration: line-through;
+}
+
+.pzm-tierOption__early {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #5e20c4;
+  margin-top: 2px;
+}
+
+.pzm-ticketCard__earlyHint {
+  font-weight: 600;
+  color: #5e20c4;
 }
 
 .pzm-ticketCard__selectionHint {

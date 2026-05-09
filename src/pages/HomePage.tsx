@@ -9,13 +9,18 @@ import { eventRoutePath } from "../lib/eventRoutes";
 import { applyJsonLd, applySeo, clearJsonLd } from "../lib/seo";
 import { DEFAULT_HERO_UNSPLASH } from "../lib/unsplashPlaceholders";
 import {
+  activeTiersOf,
+  earliestActiveEarlyBirdEndsAt,
   formatEventDate,
   formatEventTimeRange,
   eventCategory,
   eventCoverImageUrl,
+  effectiveTierPriceEtb,
+  isEarlyBirdActive,
   isSoldOut,
   minPriceEtb,
-  publishedEvents
+  publishedEvents,
+  tierPriceNum
 } from "../lib/eventUtils";
 import { ORGANIZER_TELEGRAM_HANDLE, ORGANIZER_TELEGRAM_URL } from "../lib/organizerContact";
 import {
@@ -155,13 +160,11 @@ export function HomePage() {
   const selectedEvent = events.find((eventItem) => eventItem.id === selectedEventId) ?? null;
   const selectedTiers = selectedEvent?.tiers.filter((tier) => tier.active) ?? [];
   const selectedTierPick = selectedTiers.find((tier) => tier.id === selectedTierId) ?? null;
-  const tierPriceNum = (p: string) => {
-    const n = Number(p);
-    return Number.isFinite(n) ? n : 0;
-  };
   const qtyForTotalHome = Number.isFinite(quantity) ? Math.max(1, Math.floor(Number(quantity))) : 1;
   const totalPaymentHomeEtb =
-    selectedTierPick != null ? tierPriceNum(selectedTierPick.price) * qtyForTotalHome : null;
+    selectedTierPick != null
+      ? effectiveTierPriceEtb(selectedTierPick) * qtyForTotalHome
+      : null;
 
   async function buyTicket() {
     if (!selectedEventId || !selectedTierId) {
@@ -272,6 +275,10 @@ export function HomePage() {
 
   const heroSoldOut = featured ? isSoldOut(featured) : false;
   const heroMin = featured ? minPriceEtb(featured) : null;
+  const heroHasEarlyBird =
+    featured != null && activeTiersOf(featured).some((t) => isEarlyBirdActive(t));
+  const heroEarlyBirdEndsAt =
+    featured != null ? earliestActiveEarlyBirdEndsAt(featured) : null;
   const singleEventHome = visible.length === 1;
 
   return (
@@ -314,7 +321,16 @@ export function HomePage() {
                       Get Tickets
                     </Link>
                     {heroMin != null ? (
-                      <span className="pzm-hero__from">From {heroMin.toLocaleString()} ETB</span>
+                      <div className="pzm-hero__pricing">
+                        <span className="pzm-hero__from">From {heroMin.toLocaleString()} ETB</span>
+                        {heroHasEarlyBird ? (
+                          <span className="pzm-hero__earlyNote">
+                            {heroEarlyBirdEndsAt
+                              ? `Includes early-bird pricing on select tiers until ${formatEventDate(heroEarlyBirdEndsAt)}.`
+                              : "Includes early-bird pricing on select tiers."}
+                          </span>
+                        ) : null}
+                      </div>
                     ) : null}
                   </>
                 )}
@@ -472,11 +488,19 @@ export function HomePage() {
                 }}
               >
                 <option value="">Select tier</option>
-                {selectedTiers.map((tier) => (
-                  <option key={tier.id} value={tier.id}>
-                    {tier.tierName} ({tier.tierCode}) — ETB {tier.price}
-                  </option>
-                ))}
+                {selectedTiers.map((tier) => {
+                  const pay = effectiveTierPriceEtb(tier);
+                  const list = tierPriceNum(tier.price);
+                  const early = isEarlyBirdActive(tier);
+                  const label = early
+                    ? `${tier.tierName} (${tier.tierCode}) — ETB ${pay.toLocaleString()} early bird (was ${list.toLocaleString()})`
+                    : `${tier.tierName} (${tier.tierCode}) — ETB ${pay.toLocaleString()}`;
+                  return (
+                    <option key={tier.id} value={tier.id}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
             </label>
 
@@ -532,7 +556,8 @@ export function HomePage() {
                 <span className="pzm-buy__totalAmount">ETB {totalPaymentHomeEtb.toLocaleString()}</span>
               </div>
               <p className="pzm-buy__totalBreakdown">
-                {tierPriceNum(selectedTierPick.price).toLocaleString()} ETB × {qtyForTotalHome}{" "}
+                {effectiveTierPriceEtb(selectedTierPick).toLocaleString()} ETB
+                {isEarlyBirdActive(selectedTierPick) ? " (early bird)" : ""} × {qtyForTotalHome}{" "}
                 {qtyForTotalHome === 1 ? "ticket" : "tickets"}
               </p>
             </div>

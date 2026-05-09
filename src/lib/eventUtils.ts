@@ -1,4 +1,4 @@
-import type { EventItem } from "../types";
+import type { EventItem, EventTier } from "../types";
 import { unsplashCoverForEventId } from "./unsplashPlaceholders";
 
 export function inferCategory(name: string): string {
@@ -30,10 +30,52 @@ export function isSoldOut(event: EventItem): boolean {
   return activeTiersOf(event).length === 0;
 }
 
+export function tierPriceNum(p: string | null | undefined): number {
+  if (p == null) return 0;
+  const n = Number.parseFloat(String(p));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Early bird applies until `earlyBirdEndsAt` (exclusive: expired once now >= end). */
+export function isEarlyBirdActive(tier: EventTier, now: Date = new Date()): boolean {
+  if (tier.earlyBirdPrice == null || String(tier.earlyBirdPrice).trim() === "") return false;
+  const eb = tierPriceNum(tier.earlyBirdPrice);
+  if (eb <= 0) return false;
+  if (!tier.earlyBirdEndsAt) return false;
+  const end = new Date(tier.earlyBirdEndsAt);
+  if (!Number.isFinite(end.getTime())) return false;
+  return now.getTime() < end.getTime();
+}
+
+export function effectiveTierPriceEtb(tier: EventTier, now: Date = new Date()): number {
+  if (isEarlyBirdActive(tier, now)) {
+    return tierPriceNum(tier.earlyBirdPrice);
+  }
+  return tierPriceNum(tier.price);
+}
+
 export function minPriceEtb(event: EventItem): number | null {
   const tiers = activeTiersOf(event);
   if (!tiers.length) return null;
-  return Math.min(...tiers.map((t) => Number.parseFloat(t.price)));
+  return Math.min(...tiers.map((t) => effectiveTierPriceEtb(t)));
+}
+
+/** Earliest `earlyBirdEndsAt` among tiers where early bird is still active (hero / promos). */
+export function earliestActiveEarlyBirdEndsAt(
+  event: EventItem,
+  now: Date = new Date()
+): string | null {
+  let best: string | null = null;
+  let bestMs = Infinity;
+  for (const t of activeTiersOf(event)) {
+    if (!isEarlyBirdActive(t, now) || !t.earlyBirdEndsAt) continue;
+    const ms = new Date(t.earlyBirdEndsAt).getTime();
+    if (Number.isFinite(ms) && ms < bestMs) {
+      bestMs = ms;
+      best = t.earlyBirdEndsAt;
+    }
+  }
+  return best;
 }
 
 export function formatEventDate(iso: string): string {

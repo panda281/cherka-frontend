@@ -3,6 +3,8 @@ export type EventTier = {
   tierCode: string;
   tierName: string;
   price: string;
+  earlyBirdPrice?: string | null;
+  earlyBirdEndsAt?: string | null;
   active: boolean;
 };
 
