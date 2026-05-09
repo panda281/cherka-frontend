@@ -4,6 +4,8 @@ type SeoPayload = {
   path?: string;
   image?: string;
   type?: "website" | "article";
+  /** e.g. `noindex, follow` for 404 */
+  robots?: string;
 };
 
 const defaultSiteName = "Ticketr";
@@ -60,7 +62,10 @@ export function applySeo(payload: SeoPayload) {
   document.title = payload.title;
   setCanonical(canonical);
   setMetaByName("description", payload.description);
-  setMetaByName("robots", "index,follow,max-image-preview:large");
+  setMetaByName(
+    "robots",
+    payload.robots ?? "index,follow,max-image-preview:large"
+  );
 
   setMetaByProperty("og:type", type);
   setMetaByProperty("og:site_name", defaultSiteName);
