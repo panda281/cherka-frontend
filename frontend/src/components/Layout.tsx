@@ -12,6 +12,8 @@ export function Layout() {
             <Link to="/#events">Explore Events</Link>
             <Link to="/#featured">Featured</Link>
             <Link to="/#all">All Events</Link>
+            <Link to="/organizer/promos">Organizer</Link>
+            <Link to="/#promo">Promo at checkout</Link>
           </nav>
         </div>
       </header>
@@ -31,6 +33,7 @@ export function Layout() {
             <div>
               <span className="pzm-footer__heading">Support</span>
               <a href="#buy">Buy tickets</a>
+              <Link to="/organizer/promos">Promo codes (organizers)</Link>
             </div>
           </div>
         </div>

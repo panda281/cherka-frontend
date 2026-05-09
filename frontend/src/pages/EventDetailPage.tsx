@@ -236,7 +236,7 @@ export function EventDetailPage() {
                     {promoCode.trim() ? " — total may be lower with promo." : null}
                   </p>
                 ) : null}
-                <label className="pzm-field">
+                <label className="pzm-field" id="promo">
                   <span>Promo code (optional)</span>
                   <input
                     value={promoCode}

@@ -46,3 +46,25 @@ export const CATEGORIES = [
   "Sports",
   "Tech"
 ] as const;
+
+/** Row from `GET /admin/promo-codes` (organizer tool). */
+export type PromoCodeRow = {
+  id: string;
+  name: string;
+  code: string;
+  eventId: string | null;
+  discountType: "percent" | "fixed_total";
+  discountValue: string;
+  maxUses: number | null;
+  usesCount: number;
+  validFrom: string | null;
+  validUntil: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreatePromoBatchResponse = {
+  rows: PromoCodeRow[];
+  count: number;
+};

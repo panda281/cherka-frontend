@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { EventDetailPage } from "./pages/EventDetailPage";
 import { HomePage } from "./pages/HomePage";
+import { OrganizerPromosPage } from "./pages/OrganizerPromosPage";
 import "./App.css";
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="event/:eventId" element={<EventDetailPage />} />
+          <Route path="organizer/promos" element={<OrganizerPromosPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
