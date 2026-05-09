@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 import { initAnalytics, isAnalyticsEnabled, trackPageView } from "../lib/analytics";
 
 /**
  * Mount inside BrowserRouter. Loads GA4 when VITE_GA_MEASUREMENT_ID is set
  * and records virtual page views on client-side navigation.
+ * Also includes Vercel Web Analytics for production deployments.
  */
 export function Analytics() {
   const location = useLocation();
@@ -23,5 +25,5 @@ export function Analytics() {
     trackPageView(path);
   }, [location.pathname, location.search, location.hash]);
 
-  return null;
+  return <VercelAnalytics />;
 }
